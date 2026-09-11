@@ -17,6 +17,244 @@ const payAmountLabel = document.getElementById('payAmountLabel');
 const payPieceworkDescriptionField = document.getElementById('payPieceworkDescription');
 const payPieceworkDescriptionGroup = document.getElementById('payPieceworkDescriptionGroup');
 const mainIssueField = document.getElementById('mainIssue');
+const languageToggleButton = document.querySelector('.language');
+
+let currentLanguage = 'vi';
+
+const translations = {
+    vi: {
+        navHowItWorks: 'Cách hoạt động',
+        navSources: 'Nguồn đáng tin cậy',
+        eyebrow: 'Kiểm tra quyền tại nơi làm việc',
+        heroHeading: 'Hiểu tình huống của bạn, từng bước một.',
+        intro: 'Không cần biết thuật ngữ pháp lý. VietRights sẽ hỏi những thông tin cần thiết và đưa ra hướng dẫn rõ ràng dựa trên nguồn chính thức.',
+        privacyNote: 'Để bảo vệ quyền riêng tư, không nhập số hộ chiếu, visa, TFN hoặc thông tin ngân hàng.',
+        mainIssueLabel: 'Vấn đề chính của bạn là gì?',
+        selectPlaceholder: 'Chọn',
+        mainIssuePay: 'Lương / trả lương không đúng',
+        mainIssueHours: 'Giờ làm / làm thêm / nghỉ giữa ca',
+        mainIssueDocs: 'Hợp đồng / payslip / giấy tờ',
+        mainIssueVisa: 'Visa / đe dọa liên quan tới visa',
+        mainIssueOther: 'Khác',
+        progressStatus: 'Đang làm rõ tình huống',
+        progressMeta: 'Đã thu thập 3/5 nhóm thông tin',
+        workTimeLabel: 'Thời gian làm việc',
+        workTimeHeading: 'Bạn thường làm việc vào thời điểm nào?',
+        workTimeHelp: 'Có thể chọn nhiều đáp án.',
+        workTimeWeekdayTitle: 'Ngày thường',
+        workTimeWeekdaySubtitle: 'Thứ Hai đến Thứ Sáu',
+        workTimeNightTitle: 'Buổi tối hoặc ban đêm',
+        workTimeNightSubtitle: 'Ca làm ngoài giờ ban ngày thông thường',
+        workTimeWeekendTitle: 'Cuối tuần',
+        workTimeWeekendSubtitle: 'Thứ Bảy hoặc Chủ Nhật',
+        workTimeHolidayTitle: 'Ngày lễ',
+        workTimeHolidaySubtitle: 'Public holiday tại bang hoặc vùng của bạn',
+        workTimeVariableTitle: 'Lịch thay đổi thường xuyên',
+        workTimeVariableSubtitle: 'Không có lịch làm cố định mỗi tuần',
+        workTimeUnknownTitle: 'Tôi không chắc',
+        workTimeUnknownSubtitle: 'Bạn vẫn có thể tiếp tục kiểm tra',
+        workplaceLabel: 'Bạn đang làm việc ở môi trường nào?',
+        workplaceRestaurant: 'Nhà hàng / quán ăn',
+        workplaceCafe: 'Cafe / takeaway',
+        workplaceRetail: 'Bán lẻ / cửa hàng',
+        workplaceFactory: 'Nhà máy / kho',
+        workplaceCleaning: 'Vệ sinh',
+        workplaceConstruction: 'Xây dựng',
+        workplaceCare: 'Chăm sóc / aged care',
+        workplaceOffice: 'Văn phòng',
+        optionOther: 'Khác',
+        optionUnknown: 'Không chắc',
+        workplaceOtherLabel: 'Bạn có thể ghi rõ môi trường làm việc của mình',
+        workplaceOtherPlaceholder: 'Ví dụ: tiệm nail, salon tóc, giao hàng, làm vườn...',
+        payBasisLabel: 'Bạn được trả lương theo cách nào?',
+        payAmountHourly: 'Bạn được trả bao nhiêu cho mỗi giờ làm việc?',
+        payAmountPlaceholder: 'Ví dụ: 28.50',
+        payPieceworkDescriptionLabel: 'Hãy mô tả ngắn cách tính lương theo sản phẩm / công việc của bạn.',
+        payPieceworkDescriptionPlaceholder: 'Ví dụ: Tôi được trả theo số món ăn / số đơn hàng hoàn thành...',
+        workPatternLabel: 'Bạn làm việc theo kiểu nào?',
+        workPatternRegular: 'Giờ làm khá cố định mỗi tuần',
+        workPatternVariable: 'Số giờ/ca làm thay đổi theo tuần',
+        workPatternOnCall: 'Tôi chỉ được gọi khi có ca',
+        workPatternFixedTerm: 'Hợp đồng của tôi có ngày kết thúc',
+        hoursPerWeekLabel: 'Bạn thường làm khoảng bao nhiêu giờ mỗi tuần?',
+        hoursPerWeekPlaceholder: 'Ví dụ: 25',
+        hoursPerWeekStatusLabel: 'Bạn biết số giờ làm mỗi tuần không?',
+        optionYes: 'Có',
+        optionNo: 'Không',
+        optionUnknownInfo: 'Không biết',
+        optionNotSure: 'Không chắc',
+        optionNoInfo: 'Không có thông tin này',
+        hoursPerShiftLabel: 'Nếu biết, mỗi ca bạn thường làm khoảng bao nhiêu giờ?',
+        hoursPerShiftPlaceholder: 'Ví dụ: 8',
+        paidLeaveLabel: 'Bạn có nhận nghỉ phép có lương hoặc nghỉ ốm có lương không?',
+        documentsAvailableLabel: 'Bạn có hợp đồng hoặc payslip để kiểm tra không?',
+        documentsNoContract: 'Không có hợp đồng',
+        documentsNoPayslip: 'Không có payslip',
+        documentsNoBoth: 'Không có cả hai',
+        employmentTypeLabel: 'Nếu có hợp đồng hoặc payslip, trên đó ghi loại hình làm việc của bạn là gì?',
+        employmentFullTime: 'Full-time / Toàn thời gian',
+        employmentPartTime: 'Part-time / Bán thời gian',
+        employmentCasual: 'Casual',
+        employmentFixedTerm: 'Fixed-term / Hợp đồng có thời hạn',
+        employmentOther: 'Loại khác',
+        employmentNotStated: 'Không ghi',
+        employmentUnknown: 'Tôi không biết / không hiểu',
+        payslipStatusLabel: 'Bạn có nhận được payslip / phiếu lương không?',
+        payslipUnknown: 'Không biết payslip là gì',
+        paymentMethodLabel: 'Bạn thường được trả lương bằng cách nào?',
+        paymentBankTransfer: 'Chuyển khoản ngân hàng',
+        paymentCash: 'Tiền mặt',
+        paymentBoth: 'Cả hai',
+        paymentOther: 'Cách khác',
+        overtimeStatusLabel: 'Bạn có thường làm thêm ngoài giờ hoặc ở lại sau ca không?',
+        breakStatusLabel: 'Bạn có được nghỉ giữa ca không?',
+        visaThreatLabel: 'Bạn có bị đe dọa về visa / thị thực không?',
+        descriptionLabel: 'Hãy mô tả ngắn tình huống của bạn',
+        descriptionPlaceholder: 'Ví dụ: Tôi thường phải ở lại sau ca nhưng không được trả thêm...',
+        errorDefault: 'Vui lòng chọn ít nhất một thời điểm để tiếp tục.',
+        backButton: '← Quay lại',
+        continueButton: 'Tiếp tục  →',
+        resultEyebrow: 'Hướng dẫn dành cho bạn',
+        resultTitle: 'Kết quả kiểm tra',
+        resultRiskLevelPrefix: '● Mức độ cần chú ý:',
+        resultIssuesHeading: 'Vấn đề cần xem xét',
+        resultEvidenceHeading: 'Bằng chứng nên giữ',
+        resultNextStepsHeading: 'Việc nên làm tiếp',
+        editButton: '← Sửa câu trả lời',
+        officialSourcesButton: 'Xem nguồn chính thức  →',
+        casePanelTitle: 'Hồ sơ tình huống',
+        casePanelIntro: 'VietRights chỉ hỏi những thông tin cần thiết để hiểu vấn đề của bạn.',
+        summaryMainIssueTitle: 'Vấn đề chính',
+        summaryPending: 'Chưa nhập',
+        summaryWorkInfoTitle: 'Thông tin công việc',
+        summaryWorkTimeTitle: 'Thời gian làm việc',
+        summaryAnswering: 'Đang trả lời',
+        summaryRiskTitle: 'Mức độ rủi ro',
+        summaryNotAssessed: 'Chưa đánh giá',
+        summaryGuidanceTitle: 'Hướng dẫn',
+        summaryGuidanceSubtitle: 'Nguồn và bước tiếp theo',
+        panelFooter: '🔒 Câu trả lời trong bản prototype này không được lưu lại.',
+        optionSometimes: 'Đôi khi',
+        workPatternUnknown: 'Tôi không chắc',
+        resultSources: 'Nguồn:'
+    },
+    en: {
+        navHowItWorks: 'How it works',
+        navSources: 'Trustworthy sources',
+        eyebrow: 'Workplace rights check',
+        heroHeading: 'Understand your situation, step by step.',
+        intro: 'You do not need to know the legal terms. VietRights will ask for the information needed and give clear guidance using official sources.',
+        privacyNote: 'To protect your privacy, do not enter passport, visa, TFN, or bank details.',
+        mainIssueLabel: 'What is your main issue?',
+        selectPlaceholder: 'Select',
+        mainIssuePay: 'Wages / incorrect pay',
+        mainIssueHours: 'Hours / overtime / breaks',
+        mainIssueDocs: 'Contracts / payslips / documents',
+        mainIssueVisa: 'Visa / visa-related threats',
+        mainIssueOther: 'Other',
+        progressStatus: 'Clarifying the situation',
+        progressMeta: 'Collected 3/5 information groups',
+        workTimeLabel: 'Working times',
+        workTimeHeading: 'When do you usually work?',
+        workTimeHelp: 'You can select more than one answer.',
+        workTimeWeekdayTitle: 'Weekdays',
+        workTimeWeekdaySubtitle: 'Monday to Friday',
+        workTimeNightTitle: 'Evening or night shift',
+        workTimeNightSubtitle: 'Working outside normal daytime hours',
+        workTimeWeekendTitle: 'Weekend',
+        workTimeWeekendSubtitle: 'Saturday or Sunday',
+        workTimeHolidayTitle: 'Public holiday',
+        workTimeHolidaySubtitle: 'Public holiday in your state or region',
+        workTimeVariableTitle: 'Variable schedule',
+        workTimeVariableSubtitle: 'No fixed weekly routine',
+        workTimeUnknownTitle: 'Not sure',
+        workTimeUnknownSubtitle: 'You can still continue checking',
+        workplaceLabel: 'What kind of workplace are you in?',
+        workplaceRestaurant: 'Restaurant / café',
+        workplaceCafe: 'Cafe / takeaway',
+        workplaceRetail: 'Retail / shop',
+        workplaceFactory: 'Factory / warehouse',
+        workplaceCleaning: 'Cleaning',
+        workplaceConstruction: 'Construction',
+        workplaceCare: 'Care / aged care',
+        workplaceOffice: 'Office',
+        optionOther: 'Other',
+        optionUnknown: 'Not sure',
+        workplaceOtherLabel: 'You can describe your workplace in more detail',
+        workplaceOtherPlaceholder: 'Example: nail salon, hair salon, delivery, gardening...',
+        payBasisLabel: 'How are you paid?',
+        payAmountHourly: 'How much are you paid for each hour worked?',
+        payAmountPlaceholder: 'Example: 28.50',
+        payPieceworkDescriptionLabel: 'Briefly describe how your piecework or task-based pay is calculated.',
+        payPieceworkDescriptionPlaceholder: 'Example: I am paid per meal or completed order...',
+        workPatternLabel: 'What kind of work pattern do you have?',
+        workPatternRegular: 'Fairly regular weekly hours',
+        workPatternVariable: 'Hours or shifts vary each week',
+        workPatternOnCall: 'I am only called when there is a shift',
+        workPatternFixedTerm: 'My contract has an end date',
+        hoursPerWeekLabel: 'How many hours do you usually work each week?',
+        hoursPerWeekPlaceholder: 'Example: 25',
+        hoursPerWeekStatusLabel: 'Do you know how many hours you work each week?',
+        optionYes: 'Yes',
+        optionNo: 'No',
+        optionUnknownInfo: 'Do not know',
+        optionNotSure: 'Not sure',
+        optionNoInfo: 'No information',
+        hoursPerShiftLabel: 'If you know it, how many hours is each shift usually?',
+        hoursPerShiftPlaceholder: 'Example: 8',
+        paidLeaveLabel: 'Do you receive paid leave or paid sick leave?',
+        documentsAvailableLabel: 'Do you have a contract or payslip to check?',
+        documentsNoContract: 'No contract',
+        documentsNoPayslip: 'No payslip',
+        documentsNoBoth: 'Neither',
+        employmentTypeLabel: 'If you have a contract or payslip, what employment type is listed?',
+        employmentFullTime: 'Full-time',
+        employmentPartTime: 'Part-time',
+        employmentCasual: 'Casual',
+        employmentFixedTerm: 'Fixed-term',
+        employmentOther: 'Other type',
+        employmentNotStated: 'Not stated',
+        employmentUnknown: 'I do not know / I do not understand',
+        payslipStatusLabel: 'Do you receive a payslip?',
+        payslipUnknown: 'I do not know what a payslip is',
+        paymentMethodLabel: 'How are you usually paid?',
+        paymentBankTransfer: 'Bank transfer',
+        paymentCash: 'Cash',
+        paymentBoth: 'Both',
+        paymentOther: 'Other method',
+        overtimeStatusLabel: 'Do you often work overtime or stay after a shift?',
+        breakStatusLabel: 'Do you get a break between shifts?',
+        visaThreatLabel: 'Are you being threatened because of your visa?',
+        descriptionLabel: 'Briefly describe your situation',
+        descriptionPlaceholder: 'Example: I often have to stay back after a shift but am not paid extra...',
+        errorDefault: 'Please choose at least one work time option to continue.',
+        backButton: '← Back',
+        continueButton: 'Continue  →',
+        resultEyebrow: 'Guidance for you',
+        resultTitle: 'Check result',
+        resultRiskLevelPrefix: '● Risk level:',
+        resultIssuesHeading: 'Issues to review',
+        resultEvidenceHeading: 'Documents to keep',
+        resultNextStepsHeading: 'Next steps',
+        editButton: '← Edit answers',
+        officialSourcesButton: 'View official sources  →',
+        casePanelTitle: 'Situation summary',
+        casePanelIntro: 'VietRights only asks for the information needed to understand your situation.',
+        summaryMainIssueTitle: 'Main issue',
+        summaryPending: 'Not entered',
+        summaryWorkInfoTitle: 'Job information',
+        summaryWorkTimeTitle: 'Work times',
+        summaryAnswering: 'In progress',
+        summaryRiskTitle: 'Risk level',
+        summaryNotAssessed: 'Not assessed',
+        summaryGuidanceTitle: 'Guidance',
+        summaryGuidanceSubtitle: 'Sources and next steps',
+        panelFooter: '🔒 Responses in this prototype are not stored.',
+        optionSometimes: 'Sometimes',
+        workPatternUnknown: 'Not sure',
+        resultSources: 'Source:'
+    }
+};
 
 const UNKNOWN_VALUES = new Set(['unknown', 'not_sure', 'no_info', 'no_data']);
 
@@ -50,6 +288,43 @@ function fieldIsAnswered(value) {
 
 function hasSelectedWorkTime() {
     return choiceButtons.some((button) => button.getAttribute('aria-pressed') === 'true');
+}
+
+function applyTranslations() {
+    const elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach((element) => {
+        const key = element.getAttribute('data-i18n');
+        const text = translations[currentLanguage]?.[key];
+        if (text) {
+            element.textContent = text;
+        }
+    });
+
+    const placeholderTargets = document.querySelectorAll('[data-i18n-placeholder]');
+    placeholderTargets.forEach((element) => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        const placeholder = translations[currentLanguage]?.[key];
+        if (placeholder) {
+            element.setAttribute('placeholder', placeholder);
+        }
+    });
+
+    const toggles = document.querySelectorAll('.lang-segment');
+    toggles.forEach((segment) => {
+        const isActive = segment.getAttribute('data-lang-segment') === currentLanguage;
+        segment.style.fontWeight = isActive ? '700' : '400';
+        segment.style.opacity = isActive ? '1' : '0.7';
+    });
+
+    const languageButton = document.querySelector('.language');
+    if (languageButton) {
+        languageButton.setAttribute('aria-pressed', String(currentLanguage === 'en'));
+    }
+}
+
+function setLanguage(language) {
+    currentLanguage = language === 'en' ? 'en' : 'vi';
+    applyTranslations();
 }
 
 function updateEmploymentTypeOnDocumentsVisibility() {
@@ -270,6 +545,7 @@ function collectCaseData() {
 
     const payload = {
         mainIssue,
+        language: currentLanguage,
         workplace: workplaceValue === 'other' && workplaceOtherValue ? 'other' : (workplaceValue || 'unknown'),
         workTime: selectedWorkTimes,
         description: getTextValue('description'),
@@ -414,9 +690,16 @@ if (payBasisField && typeof payBasisField.addEventListener === 'function') {
     payBasisField.addEventListener('change', updatePayBasisVisibility);
 }
 
+if (languageToggleButton && typeof languageToggleButton.addEventListener === 'function') {
+    languageToggleButton.addEventListener('click', () => {
+        setLanguage(currentLanguage === 'vi' ? 'en' : 'vi');
+    });
+}
+
 updateEmploymentTypeOnDocumentsVisibility();
 updateWorkplaceVisibility();
 updatePayBasisVisibility();
+applyTranslations();
 
 choiceButtons.forEach((button) => {
     button.addEventListener('click', () => {
