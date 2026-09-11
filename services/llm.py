@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from services.retrieval import retrieve_context
+
 load_dotenv()
 
 
@@ -51,38 +53,87 @@ def _safe_parse_json(raw_response: str) -> Dict[str, Any]:
         raise ValueError("Gemini response was not valid JSON.")
 
 
+def _format_context_for_prompt(context_entries: List[Dict[str, Any]]) -> str:
+    if not context_entries:
+        return (
+            "No matching official knowledge source was found. "
+            "Use only cautious general guidance and clearly say when the answer is not grounded in an official source."
+        )
+
+    blocks = []
+    for entry in context_entries:
+        title = str(entry.get("title") or "Untitled source").strip()
+        organisation = str(entry.get("organisation") or "Unknown organisation").strip()
+        topic = str(entry.get("topic") or "general").strip()
+        source_url = str(entry.get("source_url") or "").strip()
+        content = entry.get("relevant_content") or entry.get("content") or []
+
+        if isinstance(content, list):
+            content_items = [str(item).strip() for item in content if str(item).strip()]
+        else:
+            content_items = [str(content).strip()] if str(content).strip() else []
+
+        block = (
+            f"- Title: {title}\n"
+            f"  Organisation: {organisation}\n"
+            f"  Topic: {topic}\n"
+            f"  Source URL: {source_url or 'URL not provided'}\n"
+            f"  Content:\n"
+            + ("\n".join(f"    * {item}" for item in content_items) if content_items else "    * No extracted content available yet.")
+        )
+        blocks.append(block)
+
+    return "\n\n".join(blocks)
+
+
 def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("Missing GEMINI_API_KEY environment variable.")
+
+    retrieved_context = retrieve_context(case_data, top_k=5)
+    formatted_context = _format_context_for_prompt(retrieved_context)
+    source_refs = [
+        {
+            "title": item.get("title"),
+            "organisation": item.get("organisation"),
+            "url": item.get("source_url"),
+        }
+        for item in retrieved_context
+        if item.get("source_url")
+    ]
 
     client = genai.Client(api_key=api_key)
     system_prompt = (
         "Bạn là người hỗ trợ hướng dẫn về quyền lao động cho người Việt làm việc ở Úc. "
         "Hãy trả lời bằng tiếng Việt, rõ ràng, dễ hiểu, không dùng thuật ngữ pháp lý quá chuyên. "
         "Tập trung vào người lao động di cư Việt Nam ở Úc. "
-        "Không đưa ra kết luận pháp lý chắc chắn. Luôn nêu rõ sự không chắc chắn khi thiếu thông tin. "
+        "Sử dụng bối cảnh chính thức được cung cấp làm căn cứ chính cho thông tin về quyền lao động. "
+        "Không bịa luật, mức lương, hay sự kiện pháp lý không được hỗ trợ bởi bối cảnh đã cho. "
+        "Nếu bối cảnh không đủ, hãy nêu rõ điều nào chưa xác nhận được. "
+        "Không đưa ra kết luận pháp lý chắc chắn. "
         "Nếu thông tin quan trọng còn thiếu, hãy đặt tối đa 1-2 câu hỏi làm rõ. "
-        "Nếu người dùng không biết câu trả lời, vẫn cung cấp hướng dẫn chung có ích. "
-        "Không bịa nguồn chính thức, không nói về mức lương tối thiểu hoặc award cụ thể nếu chưa có thông tin chính thức. "
+        "Nếu người dùng không biết câu trả lời, vẫn cung cấp hướng dẫn chung an toàn. "
         "Bạn chỉ trả về JSON hợp lệ theo định dạng đã yêu cầu."
     )
 
     user_prompt = (
-        "Dựa trên dữ liệu tình huống dưới đây, hãy tạo phản hồi ngắn gọn nhưng có giá trị cho người lao động Việt Nam ở Úc. "
-        "Nội dung phải rõ ràng, mang tính hướng dẫn tổng quát, không phải tư vấn pháp lý chắc chắn. "
-        "Trả về JSON với các trường: summary, issues, evidence, next_steps, clarification_questions, risk_level. "
+        "Dựa trên dữ liệu tình huống và bối cảnh chính thức dưới đây, hãy tạo phản hồi ngắn gọn nhưng có giá trị cho người lao động Việt Nam ở Úc. "
+        "Mọi thông tin về quyền lao động phải dựa trên bối cảnh chính thức được cung cấp. "
+        "Nếu không có nguồn chính thức phù hợp, hãy nói rõ rằng câu trả lời không được căn cứ trên nguồn chính thức phù hợp. "
+        "Trả về JSON với các trường: summary, issues, evidence, next_steps, clarification_questions, risk_level, sources. "
         "risk_level phải là một trong: low, medium, high. "
-        "Nếu thiếu thông tin quan trọng, đưa tối đa 1-2 câu hỏi làm rõ trong clarification_questions. "
-        "Các mảng phải là danh sách chuỗi. "
+        "sources phải là mảng các object có đúng 3 trường: title, organisation, url. Chỉ lấy từ bối cảnh chính thức đã cung cấp. "
+        "Nếu không có nguồn phù hợp, sources phải là mảng rỗng. "
         "Không thêm các trường khác. "
         "Dữ liệu tình huống:\n"
         + json.dumps(case_data, ensure_ascii=False)
+        + "\n\nBối cảnh chính thức:\n"
+        + formatted_context
     )
 
     model_name = "gemini-3.6-flash"
     max_retries = 2
-    last_exc = None
 
     for attempt in range(max_retries + 1):
         try:
@@ -97,7 +148,6 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
             )
             break
         except Exception as exc:
-            last_exc = exc
             if attempt >= max_retries or not _is_retryable_gemini_error(exc):
                 raise RuntimeError(f"Gemini API error: {exc}") from exc
             time.sleep(1.5)
@@ -114,7 +164,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
 
     parsed = _safe_parse_json(content)
 
-    required = ["summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level"]
+    required = ["summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources"]
     for key in required:
         if key not in parsed:
             raise ValueError(f"Missing required field: {key}")
@@ -126,9 +176,31 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         "next_steps": _coerce_list(parsed.get("next_steps", [])),
         "clarification_questions": _coerce_list(parsed.get("clarification_questions", [])),
         "risk_level": str(parsed.get("risk_level", "low")).strip().lower(),
+        "sources": [
+            {
+                "title": str(item.get("title", "")).strip(),
+                "organisation": str(item.get("organisation", "")).strip(),
+                "url": str(item.get("url", "")).strip(),
+            }
+            for item in (parsed.get("sources") or [])
+            if isinstance(item, dict)
+        ],
     }
 
     if result["risk_level"] not in {"low", "medium", "high"}:
         result["risk_level"] = "medium"
+
+    if not source_refs:
+        result["sources"] = []
+    else:
+        result["sources"] = [
+            {
+                "title": item["title"],
+                "organisation": item["organisation"],
+                "url": item["url"],
+            }
+            for item in source_refs
+            if item.get("title") or item.get("organisation") or item.get("url")
+        ]
 
     return result

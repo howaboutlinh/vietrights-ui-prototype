@@ -3,10 +3,16 @@ const error = document.getElementById('error');
 const questionView = document.getElementById('question-view');
 const resultView = document.getElementById('result-view');
 const documentsAvailableField = document.getElementById('documentsAvailable');
-const casualShownOnDocumentsField = document.getElementById('casualShownOnDocuments');
-const casualQuestionGroup = casualShownOnDocumentsField && (
-    casualShownOnDocumentsField.closest ? casualShownOnDocumentsField.closest('.field-group') : casualShownOnDocumentsField.parentElement
+const employmentTypeOnDocumentsField = document.getElementById('employmentTypeOnDocuments');
+const employmentTypeOnDocumentsGroup = employmentTypeOnDocumentsField && (
+    employmentTypeOnDocumentsField.closest ? employmentTypeOnDocumentsField.closest('.field-group') : employmentTypeOnDocumentsField.parentElement
 );
+const payBasisField = document.getElementById('payBasis');
+const payAmountField = document.getElementById('payAmount');
+const payAmountGroup = document.getElementById('payAmountGroup');
+const payAmountLabel = document.getElementById('payAmountLabel');
+const payPieceworkDescriptionField = document.getElementById('payPieceworkDescription');
+const payPieceworkDescriptionGroup = document.getElementById('payPieceworkDescriptionGroup');
 const mainIssueField = document.getElementById('mainIssue');
 
 const UNKNOWN_VALUES = new Set(['unknown', 'not_sure', 'no_info', 'no_data']);
@@ -43,19 +49,58 @@ function hasSelectedWorkTime() {
     return choiceButtons.some((button) => button.getAttribute('aria-pressed') === 'true');
 }
 
-function updateCasualDocumentVisibility() {
-    if (!documentsAvailableField || !casualShownOnDocumentsField || !casualQuestionGroup) {
+function updateEmploymentTypeOnDocumentsVisibility() {
+    if (!documentsAvailableField || !employmentTypeOnDocumentsField || !employmentTypeOnDocumentsGroup) {
         return;
     }
 
     const availability = documentsAvailableField.value;
-    const shouldShowCasualQuestion = availability === 'yes' || availability === 'no_contract' || availability === 'no_payslip';
+    const shouldShowEmploymentTypeQuestion = availability === 'yes' || availability === 'no_contract' || availability === 'no_payslip';
 
-    if (shouldShowCasualQuestion) {
-        casualQuestionGroup.style.display = '';
+    if (shouldShowEmploymentTypeQuestion) {
+        employmentTypeOnDocumentsGroup.style.display = '';
     } else {
-        casualQuestionGroup.style.display = 'none';
-        casualShownOnDocumentsField.value = '';
+        employmentTypeOnDocumentsGroup.style.display = 'none';
+        employmentTypeOnDocumentsField.value = 'unknown';
+    }
+}
+
+function updatePayBasisVisibility() {
+    if (!payBasisField || !payAmountGroup || !payAmountLabel || !payPieceworkDescriptionGroup) {
+        return;
+    }
+
+    const payBasis = payBasisField.value;
+    const amountQuestions = {
+        hourly: 'Bạn được trả bao nhiêu cho mỗi giờ làm việc?',
+        per_shift: 'Bạn được trả bao nhiêu cho mỗi ca?',
+        daily: 'Bạn được trả bao nhiêu cho mỗi ngày làm việc?',
+        weekly: 'Bạn được trả bao nhiêu mỗi tuần?',
+        monthly: 'Bạn được trả bao nhiêu mỗi tháng?'
+    };
+
+    if (payBasis && amountQuestions[payBasis]) {
+        payAmountGroup.style.display = '';
+        payAmountLabel.textContent = amountQuestions[payBasis];
+        payPieceworkDescriptionGroup.style.display = 'none';
+        if (payPieceworkDescriptionField) {
+            payPieceworkDescriptionField.value = '';
+        }
+    } else if (payBasis === 'piecework') {
+        payAmountGroup.style.display = 'none';
+        payPieceworkDescriptionGroup.style.display = '';
+        if (payAmountField) {
+            payAmountField.value = '';
+        }
+    } else {
+        payAmountGroup.style.display = 'none';
+        payPieceworkDescriptionGroup.style.display = 'none';
+        if (payAmountField) {
+            payAmountField.value = '';
+        }
+        if (payPieceworkDescriptionField) {
+            payPieceworkDescriptionField.value = '';
+        }
     }
 }
 
@@ -76,9 +121,10 @@ function validateContextualFields() {
     const overtimeValue = document.getElementById('overtimeStatus')?.value || '';
     const breakValue = document.getElementById('breakStatus')?.value || '';
     const hoursPerWeekValue = document.getElementById('hoursPerWeek')?.value || '';
-    const hourlyPayValue = document.getElementById('hourlyPay')?.value || '';
+    const payBasisValue = document.getElementById('payBasis')?.value || '';
+    const payAmountValue = document.getElementById('payAmount')?.value || '';
+    const payPieceworkDescriptionValue = document.getElementById('payPieceworkDescription')?.value || '';
     const payslipStatusValue = document.getElementById('payslipStatus')?.value || '';
-    const hourlyPayStatusValue = document.getElementById('hourlyPayStatus')?.value || '';
     const hoursPerWeekStatusValue = document.getElementById('hoursPerWeekStatus')?.value || '';
 
     if (!workplaceValue) {
@@ -106,14 +152,23 @@ function validateContextualFields() {
     const isPayIssue = payIssues.includes(mainIssue);
     const isHoursIssue = hoursIssues.includes(mainIssue);
 
-    if (isPayIssue) {
-        const hasHourlyPay = fieldIsAnswered(hourlyPayValue) || (hourlyPayStatusValue && isExplicitUnknown(hourlyPayStatusValue));
-        const hasHoursPerWeek = fieldIsAnswered(hoursPerWeekValue) || (hoursPerWeekStatusValue && isExplicitUnknown(hoursPerWeekStatusValue));
+    if (!payBasisValue) {
+        showFieldError('payBasisError', 'Vui lòng chọn cách bạn được trả lương.');
+        valid = false;
+    }
 
-        if (!hasHourlyPay) {
-            showFieldError('hourlyPayError', 'Vui lòng nhập mức lương theo giờ hoặc chọn “Không biết”.');
-            valid = false;
-        }
+    if (['hourly', 'per_shift', 'daily', 'weekly', 'monthly'].includes(payBasisValue) && !fieldIsAnswered(payAmountValue)) {
+        showFieldError('payAmountError', 'Vui lòng nhập số tiền phù hợp với cách trả lương bạn đã chọn.');
+        valid = false;
+    }
+
+    if (payBasisValue === 'piecework' && !fieldIsAnswered(payPieceworkDescriptionValue)) {
+        showFieldError('payPieceworkDescriptionError', 'Vui lòng mô tả ngắn cách tính lương theo sản phẩm hoặc công việc.');
+        valid = false;
+    }
+
+    if (isPayIssue) {
+        const hasHoursPerWeek = fieldIsAnswered(hoursPerWeekValue) || (hoursPerWeekStatusValue && isExplicitUnknown(hoursPerWeekStatusValue));
 
         if (!hasHoursPerWeek) {
             showFieldError('hoursPerWeekError', 'Vui lòng nhập số giờ làm mỗi tuần hoặc chọn “Không biết”.');
@@ -146,7 +201,7 @@ function validateContextualFields() {
     }
 
     if (mainIssue === 'pay_underpayment' || mainIssue === 'hours_overtime') {
-        const hasPayInfo = fieldIsAnswered(hourlyPayValue) || (hourlyPayStatusValue && isExplicitUnknown(hourlyPayStatusValue));
+        const hasPayInfo = ['hourly', 'per_shift', 'daily', 'weekly', 'monthly'].includes(payBasisValue) && fieldIsAnswered(payAmountValue);
         const hasWeekInfo = fieldIsAnswered(hoursPerWeekValue) || (hoursPerWeekStatusValue && isExplicitUnknown(hoursPerWeekStatusValue));
         if (!hasPayInfo && !hasWeekInfo && !isPayIssue && !isHoursIssue) {
             // no-op; branch handled above
@@ -176,25 +231,22 @@ function collectCaseData() {
         .filter(Boolean);
 
     const mainIssue = getTextValue('mainIssue') || 'other';
-    const explicitEmploymentType = getTextValue('employmentType');
     const workPattern = getTextValue('workPattern') || 'unknown';
     const paidLeaveValue = getTextValue('paidLeave');
     const documentsAvailableValue = getTextValue('documentsAvailable');
-    const casualValue = getTextValue('casualShownOnDocuments');
-    const hourlyPayConfirmedValue = getTextValue('hourlyPayConfirmed');
-    const payslipStatusValue = getTextValue('payslipStatus');
-    const paymentMethodValue = getTextValue('paymentMethod');
+    const employmentTypeOnDocumentsValue = getTextValue('employmentTypeOnDocuments');
+    const payBasisValue = getTextValue('payBasis') || 'unknown';
+    const payAmountValue = getNumberValue('payAmount');
     const overtimeStatusValue = getTextValue('overtimeStatus');
     const breakStatusValue = getTextValue('breakStatus');
 
     const documentAvailability = documentsAvailableValue === 'no_both' ? 'none' : (documentsAvailableValue || 'unknown');
-    const shouldShowCasualQuestion = ['yes', 'no_contract', 'no_payslip'].includes(documentsAvailableValue || '');
-    const casualShownOnDocuments = shouldShowCasualQuestion ? (casualValue || 'unknown') : 'unknown';
+    const shouldShowEmploymentTypeQuestion = ['yes', 'no_contract', 'no_payslip'].includes(documentsAvailableValue || '');
+    const employmentTypeOnDocuments = shouldShowEmploymentTypeQuestion ? (employmentTypeOnDocumentsValue || 'unknown') : 'unknown';
 
     return {
         mainIssue,
         workplace: getTextValue('workplace'),
-        employmentType: explicitEmploymentType || 'unknown',
         workTime: selectedWorkTimes,
         description: getTextValue('description'),
         overtimeStatus: overtimeStatusValue || 'unknown',
@@ -203,22 +255,20 @@ function collectCaseData() {
         hoursPerShift: getNumberValue('hoursPerShift'),
         visaThreat: getTextValue('visaThreat'),
         documentAvailability,
-        casualShownOnDocuments,
+        employmentTypeOnDocuments,
         employmentPattern: {
             workPattern,
             hoursPerWeek: getNumberValue('hoursPerWeek'),
             hoursPerShift: getNumberValue('hoursPerShift'),
             paidLeave: paidLeaveValue === 'yes' ? true : paidLeaveValue === 'no' ? false : null,
             documentAvailability,
-            casualShownOnDocuments,
+            employmentTypeOnDocuments,
             overtimeStatus: overtimeStatusValue || 'unknown',
             breakStatus: breakStatusValue || 'unknown'
         },
         pay: {
-            hourlyPay: getNumberValue('hourlyPay'),
-            hourlyPayConfirmed: hourlyPayConfirmedValue === 'yes' ? true : hourlyPayConfirmedValue === 'no' ? false : 'unknown',
-            payslipStatus: payslipStatusValue || 'unknown',
-            paymentMethod: paymentMethodValue || 'unknown'
+            payBasis: ['hourly', 'per_shift', 'daily', 'weekly', 'monthly', 'piecework', 'unknown'].includes(payBasisValue) ? payBasisValue : 'unknown',
+            amount: ['hourly', 'per_shift', 'daily', 'weekly', 'monthly'].includes(payBasisValue) ? payAmountValue : null
         }
     };
 }
@@ -323,10 +373,15 @@ function renderResult(result) {
 }
 
 if (documentsAvailableField && typeof documentsAvailableField.addEventListener === 'function') {
-    documentsAvailableField.addEventListener('change', updateCasualDocumentVisibility);
+    documentsAvailableField.addEventListener('change', updateEmploymentTypeOnDocumentsVisibility);
 }
 
-updateCasualDocumentVisibility();
+if (payBasisField && typeof payBasisField.addEventListener === 'function') {
+    payBasisField.addEventListener('change', updatePayBasisVisibility);
+}
+
+updateEmploymentTypeOnDocumentsVisibility();
+updatePayBasisVisibility();
 
 choiceButtons.forEach((button) => {
     button.addEventListener('click', () => {

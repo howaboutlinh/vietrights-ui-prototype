@@ -111,20 +111,28 @@
                         <div class="field-error" id="workplaceError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="hourlyPay">Bạn được trả khoảng bao nhiêu mỗi giờ?</label>
-                        <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="28.50">
-                        <div class="field-error" id="hourlyPayError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="hourlyPayStatus">Bạn biết mức lương theo giờ không?</label>
-                        <select class="field-input" id="hourlyPayStatus">
+                        <label class="field-label" for="payBasis">Bạn được trả lương theo cách nào?</label>
+                        <select class="field-input" id="payBasis">
                             <option value="">Chọn</option>
-                            <option value="known">Có</option>
-                            <option value="unknown">Không biết</option>
-                            <option value="not_sure">Không chắc</option>
-                            <option value="no_info">Không có thông tin này</option>
+                            <option value="hourly">Theo giờ</option>
+                            <option value="per_shift">Theo ca</option>
+                            <option value="daily">Theo ngày</option>
+                            <option value="weekly">Theo tuần</option>
+                            <option value="monthly">Theo tháng</option>
+                            <option value="piecework">Theo sản phẩm / công việc</option>
+                            <option value="unknown">Tôi không chắc</option>
                         </select>
-                        <div class="field-error" id="hourlyPayStatusError" aria-live="polite"></div>
+                        <div class="field-error" id="payBasisError" aria-live="polite"></div>
+                    </div>
+                    <div class="field-group" id="payAmountGroup" style="display: none;">
+                        <label class="field-label" for="payAmount" id="payAmountLabel">Bạn được trả bao nhiêu cho mỗi giờ làm việc?</label>
+                        <input class="field-input" id="payAmount" type="number" min="0" step="0.01" placeholder="Ví dụ: 28.50">
+                        <div class="field-error" id="payAmountError" aria-live="polite"></div>
+                    </div>
+                    <div class="field-group" id="payPieceworkDescriptionGroup" style="display: none;">
+                        <label class="field-label" for="payPieceworkDescription">Hãy mô tả ngắn cách tính lương theo sản phẩm / công việc của bạn.</label>
+                        <textarea class="field-input field-textarea" id="payPieceworkDescription" rows="3" placeholder="Ví dụ: Tôi được trả theo số món ăn / số đơn hàng hoàn thành..."></textarea>
+                        <div class="field-error" id="payPieceworkDescriptionError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="workPattern">Bạn làm việc theo kiểu nào?</label>
@@ -179,12 +187,16 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="casualShownOnDocuments">Nếu có, trên đó có ghi "casual" không?</label>
-                        <select class="field-input" id="casualShownOnDocuments">
+                        <label class="field-label" for="employmentTypeOnDocuments">Nếu có hợp đồng hoặc payslip, trên đó ghi loại hình làm việc của bạn là gì?</label>
+                        <select class="field-input" id="employmentTypeOnDocuments">
                             <option value="">Chọn</option>
-                            <option value="yes">Có</option>
-                            <option value="no">Không</option>
-                            <option value="unknown">Không biết</option>
+                            <option value="full_time">Full-time / Toàn thời gian</option>
+                            <option value="part_time">Part-time / Bán thời gian</option>
+                            <option value="casual">Casual</option>
+                            <option value="fixed_term">Fixed-term / Hợp đồng có thời hạn</option>
+                            <option value="other">Loại khác</option>
+                            <option value="not_stated">Không ghi</option>
+                            <option value="unknown">Tôi không biết / không hiểu</option>
                         </select>
                     </div>
                     <div class="field-group">
