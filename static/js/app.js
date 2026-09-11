@@ -7,6 +7,9 @@ const employmentTypeOnDocumentsField = document.getElementById('employmentTypeOn
 const employmentTypeOnDocumentsGroup = employmentTypeOnDocumentsField && (
     employmentTypeOnDocumentsField.closest ? employmentTypeOnDocumentsField.closest('.field-group') : employmentTypeOnDocumentsField.parentElement
 );
+const workplaceField = document.getElementById('workplace');
+const workplaceOtherField = document.getElementById('workplaceOther');
+const workplaceOtherGroup = document.getElementById('workplaceOtherGroup');
 const payBasisField = document.getElementById('payBasis');
 const payAmountField = document.getElementById('payAmount');
 const payAmountGroup = document.getElementById('payAmountGroup');
@@ -65,6 +68,19 @@ function updateEmploymentTypeOnDocumentsVisibility() {
     }
 }
 
+function updateWorkplaceVisibility() {
+    if (!workplaceField || !workplaceOtherField || !workplaceOtherGroup) {
+        return;
+    }
+
+    if (workplaceField.value === 'other') {
+        workplaceOtherGroup.style.display = '';
+    } else {
+        workplaceOtherGroup.style.display = 'none';
+        workplaceOtherField.value = '';
+    }
+}
+
 function updatePayBasisVisibility() {
     if (!payBasisField || !payAmountGroup || !payAmountLabel || !payPieceworkDescriptionGroup) {
         return;
@@ -116,6 +132,7 @@ function validateContextualFields() {
     const mainIssue = getMainIssue();
 
     const workplaceValue = document.getElementById('workplace')?.value || '';
+    const workplaceOtherValue = document.getElementById('workplaceOther')?.value || '';
     const visaThreatValue = document.getElementById('visaThreat')?.value || '';
     const workPatternValue = document.getElementById('workPattern')?.value || '';
     const overtimeValue = document.getElementById('overtimeStatus')?.value || '';
@@ -129,6 +146,11 @@ function validateContextualFields() {
 
     if (!workplaceValue) {
         showFieldError('workplaceError', 'Vui lòng chọn môi trường làm việc.');
+        valid = false;
+    }
+
+    if (workplaceValue === 'other' && !fieldIsAnswered(workplaceOtherValue)) {
+        showFieldError('workplaceOtherError', 'Vui lòng ghi rõ môi trường làm việc của bạn.');
         valid = false;
     }
 
@@ -235,6 +257,8 @@ function collectCaseData() {
     const paidLeaveValue = getTextValue('paidLeave');
     const documentsAvailableValue = getTextValue('documentsAvailable');
     const employmentTypeOnDocumentsValue = getTextValue('employmentTypeOnDocuments');
+    const workplaceValue = getTextValue('workplace');
+    const workplaceOtherValue = getTextValue('workplaceOther');
     const payBasisValue = getTextValue('payBasis') || 'unknown';
     const payAmountValue = getNumberValue('payAmount');
     const overtimeStatusValue = getTextValue('overtimeStatus');
@@ -244,9 +268,9 @@ function collectCaseData() {
     const shouldShowEmploymentTypeQuestion = ['yes', 'no_contract', 'no_payslip'].includes(documentsAvailableValue || '');
     const employmentTypeOnDocuments = shouldShowEmploymentTypeQuestion ? (employmentTypeOnDocumentsValue || 'unknown') : 'unknown';
 
-    return {
+    const payload = {
         mainIssue,
-        workplace: getTextValue('workplace'),
+        workplace: workplaceValue === 'other' && workplaceOtherValue ? 'other' : (workplaceValue || 'unknown'),
         workTime: selectedWorkTimes,
         description: getTextValue('description'),
         overtimeStatus: overtimeStatusValue || 'unknown',
@@ -271,6 +295,12 @@ function collectCaseData() {
             amount: ['hourly', 'per_shift', 'daily', 'weekly', 'monthly'].includes(payBasisValue) ? payAmountValue : null
         }
     };
+
+    if (workplaceValue === 'other' && workplaceOtherValue) {
+        payload.workplaceOther = workplaceOtherValue;
+    }
+
+    return payload;
 }
 
 function renderListItems(listElement, items) {
@@ -376,11 +406,16 @@ if (documentsAvailableField && typeof documentsAvailableField.addEventListener =
     documentsAvailableField.addEventListener('change', updateEmploymentTypeOnDocumentsVisibility);
 }
 
+if (workplaceField && typeof workplaceField.addEventListener === 'function') {
+    workplaceField.addEventListener('change', updateWorkplaceVisibility);
+}
+
 if (payBasisField && typeof payBasisField.addEventListener === 'function') {
     payBasisField.addEventListener('change', updatePayBasisVisibility);
 }
 
 updateEmploymentTypeOnDocumentsVisibility();
+updateWorkplaceVisibility();
 updatePayBasisVisibility();
 
 choiceButtons.forEach((button) => {
