@@ -27,20 +27,30 @@ Each source should record:
 - extracted content
 - last checked date
 
-## Example structure
+## JSON source format
 
-Use one file per source or one source index file per topic. Keep entries factual and traceable to the original page.
+Use one JSON file per source topic with this structure:
 
-Example metadata:
-
-```yaml
-- title: "Example official source"
-  organisation: "Fair Work Ombudsman"
-  topic: "minimum wages and entitlements"
-  source_url: "https://example.gov.au/page"
-  extracted_content: "Brief factual notes from the official source only."
-  last_checked: "2026-09-11"
+```json
+{
+  "title": "...",
+  "organisation": "...",
+  "topic": "...",
+  "source_url": "...",
+  "last_checked": "YYYY-MM-DD",
+  "content": [
+    "...",
+    "..."
+  ]
+}
 ```
+
+Rules:
+
+- Do not invent legal rules or URLs.
+- If a verified official source is not available locally yet, use empty `content` arrays with TODO placeholders only.
+- Do not add fake wage figures.
+- Keep files simple, factual, and human-editable.
 
 ## Notes for future RAG work
 
