@@ -3,7 +3,8 @@ import os
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -19,25 +20,31 @@ def _coerce_list(value: Any) -> List[str]:
 
 
 def _safe_parse_json(raw_response: str) -> Dict[str, Any]:
+    text = str(raw_response or '').strip()
+    if not text:
+        raise ValueError("Gemini returned an empty response.")
+
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+
     try:
-        return json.loads(raw_response)
+        return json.loads(text)
     except json.JSONDecodeError:
-        text = raw_response.strip()
-        if not text:
-            raise ValueError("OpenAI returned an empty response.")
         start = text.find("{")
         end = text.rfind("}")
         if start != -1 and end != -1 and end > start:
             return json.loads(text[start:end + 1])
-        raise ValueError("OpenAI response was not valid JSON.")
+        raise ValueError("Gemini response was not valid JSON.")
 
 
 def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError("Missing OPENAI_API_KEY environment variable.")
+        raise RuntimeError("Missing GEMINI_API_KEY environment variable.")
 
-    client = OpenAI(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     system_prompt = (
         "Bạn là người hỗ trợ hướng dẫn về quyền lao động cho người Việt làm việc ở Úc. "
         "Hãy trả lời bằng tiếng Việt, rõ ràng, dễ hiểu, không dùng thuật ngữ pháp lý quá chuyên. "
@@ -62,30 +69,27 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     try:
-        response = client.responses.create(
-            model="gpt-4o-mini",
-            input=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.3,
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.3,
+                response_mime_type="application/json",
+            ),
         )
     except Exception as exc:
-        raise RuntimeError(f"OpenAI API error: {exc}") from exc
+        raise RuntimeError(f"Gemini API error: {exc}") from exc
 
-    content = getattr(response, "output_text", None)
+    content = getattr(response, "text", None)
     if not content:
-        output = getattr(response, "output", None) or []
-        parts = []
-        for item in output:
-            if isinstance(item, dict):
-                for value in item.get("content", []):
-                    if isinstance(value, dict) and "text" in value:
-                        parts.append(value["text"])
-        content = "".join(parts)
+        try:
+            content = response.candidates[0].content.parts[0].text
+        except Exception:
+            content = ""
 
     if not content:
-        raise ValueError("OpenAI returned no usable content.")
+        raise ValueError("Gemini returned no usable content.")
 
     parsed = _safe_parse_json(content)
 
