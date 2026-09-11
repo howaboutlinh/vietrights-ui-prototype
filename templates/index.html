@@ -4,14 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VietRights</title>
-  <link rel="stylesheet" href="reference_style.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 
 <body>
   <header class="site-header">
     <div class="nav-shell">
       <a class="brand" href="#home" aria-label="VietRights home">
-        <span class="brand-mark">✦</span>
+        <svg class="brand-logo" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M24 40V14" />
+          <path d="M24 24C17 22 12 17 10 9C17 10 22 15 24 22" />
+          <path d="M24 24C31 22 36 17 38 9C31 10 26 15 24 22" />
+          <path d="M24 18C21 14 21 8 24 4C27 8 27 14 24 18" />
+        </svg>
         <span class="brand-name">Viet<span>Rights</span></span>
       </a>
 
@@ -98,10 +103,21 @@
       <div class="section-shell source-strip-inner">
         <p data-i18n="source_intro">Dựa trên thông tin từ các nguồn đáng tin cậy</p>
         <div class="source-logos" aria-label="Trusted sources">
-          <span>Fair Work Ombudsman</span>
-          <span>SafeWork NSW</span>
-          <span>RMWC</span>
-          <span>Home Affairs</span>
+          <a class="source-brand" href="https://www.fairwork.gov.au/" target="_blank" rel="noopener noreferrer" aria-label="Visit Fair Work Ombudsman official website">
+            <img src="{{ url_for('static', filename='images/sources/fair-work-ombudsman.png') }}" alt="Fair Work Ombudsman logo" />
+          </a>
+
+          <a class="source-brand source-brand-nsw" href="https://www.safework.nsw.gov.au/" target="_blank" rel="noopener noreferrer" aria-label="Visit SafeWork NSW official website">
+            <img src="{{ url_for('static', filename='images/sources/safework-nsw.png') }}" alt="SafeWork NSW logo" />
+          </a>
+
+          <a class="source-brand" href="https://unionsnsw.org.au/your-rights/migrant-workers/" target="_blank" rel="noopener noreferrer" aria-label="Visit Unions NSW Migrant Workers Hub">
+            <img src="{{ url_for('static', filename='images/sources/rmwc.png') }}" alt="RMWC Refugee and Migrant Workers Centre logo" />
+          </a>
+
+          <a class="source-brand" href="https://www.homeaffairs.gov.au/" target="_blank" rel="noopener noreferrer" aria-label="Visit Home Affairs official website">
+            <img src="{{ url_for('static', filename='images/sources/home-affairs.png') }}" alt="Department of Home Affairs logo" />
+          </a>
         </div>
         <a href="#intake" class="circle-link" aria-label="Start">→</a>
       </div>
@@ -290,6 +306,7 @@
                 <option value="not_stated">Không ghi</option>
                 <option value="unknown">Tôi không biết / không hiểu</option>
               </select>
+              <p class="field-error" data-error-for="employment-doc-type"></p>
             </div>
 
             <div class="form-group">
@@ -309,11 +326,13 @@
             <div class="form-group conditional" id="pay-amount-wrap" hidden>
               <label id="pay-amount-label" for="pay-amount">Bạn được trả bao nhiêu?</label>
               <input id="pay-amount" type="number" min="0" step="0.01" placeholder="Ví dụ: 28.50" />
+              <p class="field-error" data-error-for="pay-amount"></p>
             </div>
 
             <div class="form-group conditional" id="piecework-wrap" hidden>
               <label for="piecework-description">Bạn được tính tiền như thế nào?</label>
               <textarea id="piecework-description" rows="3" placeholder="Mô tả ngắn cách bạn được trả tiền..."></textarea>
+              <p class="field-error" data-error-for="piecework-description"></p>
             </div>
 
             <div class="form-group">
@@ -550,6 +569,6 @@
     </div>
   </footer>
 
-  <script src="reference_app.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

@@ -17,7 +17,7 @@
   --radius-lg: 22px;
   --radius-md: 16px;
   --max: 1220px;
-  --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --serif: Georgia, "Times New Roman", serif;
   --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -88,14 +88,14 @@ img {
   gap: 11px;
 }
 
-.brand-mark {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--deep);
-  border-radius: 50%;
-  font-size: 18px;
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  fill: none;
+  stroke: var(--deep);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .brand-name {
@@ -220,9 +220,11 @@ img {
 .result-step h2 {
   font-family: var(--serif);
   font-weight: 500;
-  letter-spacing: -0.05em;
-  line-height: .94;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
   margin: 0;
+  font-feature-settings: "kern" 1, "liga" 1;
+  text-rendering: optimizeLegibility;
 }
 
 /* HERO */
@@ -240,7 +242,9 @@ img {
 }
 
 .hero h1 {
-  font-size: clamp(62px, 7vw, 108px);
+  font-size: clamp(64px, 7vw, 112px);
+  letter-spacing: -0.05em;
+  line-height: 0.9;
 }
 
 .hero-description {
@@ -298,9 +302,8 @@ img {
   padding: 48px;
   color: #f9f5ec;
   background:
-    linear-gradient(180deg, rgba(11,24,20,.06), rgba(11,24,20,.55)),
-    radial-gradient(circle at 70% 25%, rgba(204,167,109,.28), transparent 23%),
-    linear-gradient(135deg, #2d3a32 0%, #1c2722 38%, #725e48 100%);
+    linear-gradient(180deg, rgba(19, 24, 24, 0.12), rgba(16, 24, 22, 0.48)),
+    url('https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
   box-shadow: var(--shadow);
 }
 
@@ -398,11 +401,45 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 44px;
+  gap: 56px;
   flex-wrap: wrap;
-  font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 700;
+}
+
+.source-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.source-brand img {
+  width: auto;
+  max-width: 190px;
+  height: 54px;
+  object-fit: contain;
+  display: block;
+  filter: grayscale(1) contrast(1.1);
+}
+
+.source-brand:nth-child(2) img {
+  max-width: 170px;
+  height: 58px;
+}
+
+.source-brand:nth-child(3) img {
+  max-width: 240px;
+  height: 58px;
+}
+
+.source-brand-nsw img {
+  max-width: 170px;
+  height: 58px;
+}
+
+.source-brand:hover,
+.source-brand:focus-visible {
+  opacity: 0.72;
+  transform: translateY(-1px);
 }
 
 .circle-link {
@@ -431,8 +468,8 @@ img {
   overflow: hidden;
   padding: 50px;
   background:
-    linear-gradient(180deg, rgba(87,52,27,.06), rgba(59,46,33,.32)),
-    linear-gradient(135deg, #cab096 0%, #9a6a48 44%, #423e37 100%);
+    linear-gradient(180deg, rgba(36, 46, 39, 0.10), rgba(20, 29, 27, 0.44)),
+    url('https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
   box-shadow: var(--shadow);
 }
 
