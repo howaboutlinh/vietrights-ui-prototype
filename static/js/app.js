@@ -2,6 +2,11 @@ const choiceButtons = [...document.querySelectorAll('.choice')];
 const error = document.getElementById('error');
 const questionView = document.getElementById('question-view');
 const resultView = document.getElementById('result-view');
+const stepPanels = [...document.querySelectorAll('.step-panel')];
+const summaryItems = [...document.querySelectorAll('.summary-item')];
+const progressFill = document.getElementById('progressFill');
+const stepStatusText = document.getElementById('stepStatusText');
+const stepMetaText = document.getElementById('stepMetaText');
 const documentsAvailableField = document.getElementById('documentsAvailable');
 const employmentTypeOnDocumentsField = document.getElementById('employmentTypeOnDocuments');
 const employmentTypeOnDocumentsGroup = employmentTypeOnDocumentsField && (
@@ -20,6 +25,7 @@ const mainIssueField = document.getElementById('mainIssue');
 const languageToggleButton = document.querySelector('.language');
 
 let currentLanguage = 'vi';
+let currentStep = 1;
 
 const translations = {
     vi: {
@@ -290,6 +296,68 @@ function hasSelectedWorkTime() {
     return choiceButtons.some((button) => button.getAttribute('aria-pressed') === 'true');
 }
 
+function updateProgressState() {
+    const progressMap = {
+        1: 20,
+        2: 40,
+        3: 60,
+        4: 80,
+        5: 100
+    };
+
+    const stepLabels = {
+        1: 'Bước 1 · Vấn đề chính',
+        2: 'Bước 2 · Thông tin công việc',
+        3: 'Bước 3 · Thời gian làm việc',
+        4: 'Bước 4 · Mức độ rủi ro',
+        5: 'Bước 5 · Hướng dẫn'
+    };
+
+    const nextPercent = progressMap[currentStep] ?? 20;
+    if (progressFill) {
+        progressFill.style.width = `${nextPercent}%`;
+    }
+    if (stepStatusText) {
+        stepStatusText.textContent = stepLabels[currentStep] || 'Đang làm rõ tình huống';
+    }
+    if (stepMetaText) {
+        stepMetaText.textContent = `Bước ${currentStep} / 5`;
+    }
+
+    summaryItems.forEach((item, index) => {
+        const stepNumber = index + 1;
+        item.classList.remove('done', 'current', 'upcoming');
+
+        if (currentStep === 5 && stepNumber === 5) {
+            item.classList.add('current');
+        } else if (stepNumber < currentStep) {
+            item.classList.add('done');
+        } else if (stepNumber === currentStep) {
+            item.classList.add('current');
+        } else {
+            item.classList.add('upcoming');
+        }
+
+        const dot = item.querySelector('.dot');
+        if (dot) {
+            dot.textContent = stepNumber;
+        }
+    });
+}
+
+function showStep(step) {
+    currentStep = Math.min(4, Math.max(1, Number(step) || 1));
+    stepPanels.forEach((panel) => {
+        const isVisible = Number(panel.dataset.step) === currentStep;
+        panel.classList.toggle('active', isVisible);
+        panel.style.display = isVisible ? 'block' : 'none';
+    });
+    updateProgressState();
+    questionView.style.display = 'block';
+    resultView.style.display = 'none';
+    clearFieldErrors();
+}
+
 function applyTranslations() {
     const elements = document.querySelectorAll('[data-i18n]');
     elements.forEach((element) => {
@@ -398,6 +466,67 @@ function updatePayBasisVisibility() {
 function getMainIssue() {
     if (!mainIssueField) return '';
     return String(mainIssueField.value || '').trim().toLowerCase();
+}
+
+function validateCurrentStep() {
+    clearFieldErrors();
+
+    if (currentStep === 1) {
+        if (!mainIssueField || !mainIssueField.value) {
+            showFieldError('mainIssueError', 'Vui lòng chọn vấn đề chính của bạn.');
+            return false;
+        }
+        return true;
+    }
+
+    if (currentStep === 2) {
+        const workplaceValue = document.getElementById('workplace')?.value || '';
+        const workplaceOtherValue = document.getElementById('workplaceOther')?.value || '';
+        const workPatternValue = document.getElementById('workPattern')?.value || '';
+        const payBasisValue = document.getElementById('payBasis')?.value || '';
+        const payAmountValue = document.getElementById('payAmount')?.value || '';
+        const payPieceworkDescriptionValue = document.getElementById('payPieceworkDescription')?.value || '';
+
+        if (!workplaceValue) {
+            showFieldError('workplaceError', 'Vui lòng chọn môi trường làm việc.');
+            return false;
+        }
+        if (workplaceValue === 'other' && !fieldIsAnswered(workplaceOtherValue)) {
+            showFieldError('workplaceOtherError', 'Vui lòng ghi rõ môi trường làm việc của bạn.');
+            return false;
+        }
+        if (!workPatternValue) {
+            showFieldError('workPatternError', 'Vui lòng chọn kiểu làm việc.');
+            return false;
+        }
+        if (!payBasisValue) {
+            showFieldError('payBasisError', 'Vui lòng chọn cách bạn được trả lương.');
+            return false;
+        }
+        if (['hourly', 'per_shift', 'daily', 'weekly', 'monthly'].includes(payBasisValue) && !fieldIsAnswered(payAmountValue)) {
+            showFieldError('payAmountError', 'Vui lòng nhập số tiền phù hợp với cách trả lương bạn đã chọn.');
+            return false;
+        }
+        if (payBasisValue === 'piecework' && !fieldIsAnswered(payPieceworkDescriptionValue)) {
+            showFieldError('payPieceworkDescriptionError', 'Vui lòng mô tả ngắn cách tính lương theo sản phẩm hoặc công việc.');
+            return false;
+        }
+        return true;
+    }
+
+    if (currentStep === 3) {
+        if (!hasSelectedWorkTime()) {
+            showFieldError('workTimeError', 'Vui lòng chọn ít nhất một thời điểm làm việc.');
+            return false;
+        }
+        return true;
+    }
+
+    if (currentStep === 4) {
+        return validateContextualFields();
+    }
+
+    return true;
 }
 
 function validateContextualFields() {
@@ -700,48 +829,79 @@ updateEmploymentTypeOnDocumentsVisibility();
 updateWorkplaceVisibility();
 updatePayBasisVisibility();
 applyTranslations();
+updateProgressState();
+showStep(1);
 
 choiceButtons.forEach((button) => {
     button.addEventListener('click', () => {
         const selected = button.getAttribute('aria-pressed') === 'true';
         button.setAttribute('aria-pressed', String(!selected));
-        error.style.display = 'none';
+        const activeError = document.getElementById('workTimeError') || error;
+        if (activeError) {
+            activeError.style.display = 'none';
+        }
     });
 });
 
-document.getElementById('continue').addEventListener('click', async () => {
-    clearFieldErrors();
+document.querySelectorAll('.step-next').forEach((button) => {
+    button.addEventListener('click', async () => {
+        clearFieldErrors();
 
-    if (!validateContextualFields()) {
-        error.style.display = 'none';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-    }
+        if (!validateCurrentStep()) {
+            if (error) {
+                error.style.display = 'none';
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
 
-    error.style.display = 'none';
+        if (currentStep < 4) {
+            showStep(currentStep + 1);
+            return;
+        }
 
-    try {
-        const result = await sendCaseToBackend();
+        try {
+            const submitButton = button;
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Đang phân tích...';
 
-        console.log("Analysis result:", result);
+            const result = await sendCaseToBackend();
+            console.log("Analysis result:", result);
 
-        renderResult(result);
-        questionView.style.display = 'none';
-        resultView.style.display = 'block';
+            renderResult(result);
+            questionView.style.display = 'none';
+            resultView.style.display = 'block';
+            currentStep = 5;
+            updateProgressState();
 
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
+        } catch (error) {
+            console.error("Failed to analyze case:", error);
+            button.disabled = false;
+            button.textContent = 'Phân tích tình huống';
+        }
+    });
+});
 
-    } catch (error) {
-        console.error("Failed to analyze case:", error);
-    }
+document.querySelectorAll('.step-back').forEach((button) => {
+    button.addEventListener('click', () => {
+        if (currentStep > 1) {
+            showStep(currentStep - 1);
+        }
+    });
 });
 
 document.getElementById('edit').addEventListener('click', () => {
     resultView.style.display = 'none';
     questionView.style.display = 'block';
+    currentStep = 1;
+    showStep(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 

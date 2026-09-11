@@ -39,231 +39,283 @@
     <div class="page">
         <main class="workspace">
             <section id="question-view">
-                <p class="eyebrow" data-i18n="eyebrow">Kiểm tra quyền tại nơi làm việc</p>
-                <h1 data-i18n="heroHeading">Hiểu tình huống của bạn, từng bước một.</h1>
-                <p class="intro" data-i18n="intro">Không cần biết thuật ngữ pháp lý. VietRights sẽ hỏi những thông tin cần thiết và đưa ra
-                    hướng dẫn rõ ràng dựa trên nguồn chính thức.</p>
-
-                <div class="privacy-note">
-                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8" />
-                        <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8" />
-                    </svg>
-                    <span data-i18n="privacyNote">Để bảo vệ quyền riêng tư, không nhập số hộ chiếu, visa, TFN hoặc thông tin ngân hàng.</span>
+                <div class="progress-meta">
+                    <strong id="stepStatusText" data-i18n="progressStatus">Đang làm rõ tình huống</strong>
+                    <span id="stepMetaText" data-i18n="progressMeta">Bước 1 / 5</span>
                 </div>
-
-                <div class="field-group">
-                    <label class="field-label" for="mainIssue" data-i18n="mainIssueLabel">Vấn đề chính của bạn là gì?</label>
-                    <select class="field-input" id="mainIssue">
-                        <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                        <option value="pay_underpayment" data-i18n="mainIssuePay">Lương / trả lương không đúng</option>
-                        <option value="hours_overtime" data-i18n="mainIssueHours">Giờ làm / làm thêm / nghỉ giữa ca</option>
-                        <option value="documents_contract" data-i18n="mainIssueDocs">Hợp đồng / payslip / giấy tờ</option>
-                        <option value="visa_threat" data-i18n="mainIssueVisa">Visa / đe dọa liên quan tới visa</option>
-                        <option value="other" data-i18n="mainIssueOther">Khác</option>
-                    </select>
-                    <div class="field-error" id="mainIssueError" aria-live="polite"></div>
-                </div>
-
-                <div class="progress-meta"><strong data-i18n="progressStatus">Đang làm rõ tình huống</strong><span data-i18n="progressMeta">Đã thu thập 3/5 nhóm thông tin</span></div>
                 <div class="progress" role="progressbar" aria-label="Tiến độ" aria-valuemin="0" aria-valuemax="100"
-                    aria-valuenow="54"><span></span></div>
+                    aria-valuenow="20"><span id="progressFill" style="width: 20%;"></span></div>
 
-                <p class="question-label" data-i18n="workTimeLabel">Thời gian làm việc</p>
-                <h2 data-i18n="workTimeHeading">Bạn thường làm việc vào thời điểm nào?</h2>
-                <p class="question-help" data-i18n="workTimeHelp">Có thể chọn nhiều đáp án.</p>
+                <div class="step-panel active" data-step="1">
+                    <p class="eyebrow" data-i18n="eyebrow">Kiểm tra quyền tại nơi làm việc</p>
+                    <h1 data-i18n="heroHeading">Hiểu tình huống của bạn, từng bước một.</h1>
+                    <p class="intro" data-i18n="intro">Không cần biết thuật ngữ pháp lý. VietRights sẽ hỏi những thông tin cần thiết và đưa ra
+                        hướng dẫn rõ ràng dựa trên nguồn chính thức.</p>
 
-                <div class="choices" id="choices">
-                    <button class="choice" type="button" aria-pressed="false"><span
-                            class="check">✓</span><span><strong data-i18n="workTimeWeekdayTitle">Ngày thường</strong><small data-i18n="workTimeWeekdaySubtitle">Thứ Hai đến Thứ Sáu</small></span></button>
-                    <button class="choice" type="button" aria-pressed="false"><span
-                            class="check">✓</span><span><strong data-i18n="workTimeNightTitle">Buổi tối hoặc ban đêm</strong><small data-i18n="workTimeNightSubtitle">Ca làm ngoài giờ ban ngày thông thường</small></span></button>
-                    <button class="choice" type="button" aria-pressed="true"><span
-                            class="check">✓</span><span><strong data-i18n="workTimeWeekendTitle">Cuối tuần</strong><small data-i18n="workTimeWeekendSubtitle">Thứ Bảy hoặc Chủ Nhật</small></span></button>
-                    <button class="choice" type="button" aria-pressed="false"><span
-                            class="check">✓</span><span><strong data-i18n="workTimeHolidayTitle">Ngày lễ</strong><small data-i18n="workTimeHolidaySubtitle">Public holiday tại bang hoặc vùng của bạn</small></span></button>
-                    <button class="choice" type="button" aria-pressed="false"><span
-                            class="check">✓</span><span><strong data-i18n="workTimeVariableTitle">Lịch thay đổi thường xuyên</strong><small data-i18n="workTimeVariableSubtitle">Không có lịch làm cố định mỗi tuần</small></span></button>
-                    <button class="choice" type="button" aria-pressed="false"><span
-                            class="check">✓</span><span><strong data-i18n="workTimeUnknownTitle">Tôi không chắc</strong><small data-i18n="workTimeUnknownSubtitle">Bạn vẫn có thể tiếp tục kiểm tra</small></span></button>
-                </div>
-                <div class="field-error" id="workTimeError" aria-live="polite"></div>
+                    <div class="privacy-note">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8" />
+                        </svg>
+                        <span data-i18n="privacyNote">Để bảo vệ quyền riêng tư, không nhập số hộ chiếu, visa, TFN hoặc thông tin ngân hàng.</span>
+                    </div>
 
-                <div class="field-list">
                     <div class="field-group">
-                        <label class="field-label" for="workplace" data-i18n="workplaceLabel">Bạn đang làm việc ở môi trường nào?</label>
-                        <select class="field-input" id="workplace">
+                        <label class="field-label" for="mainIssue" data-i18n="mainIssueLabel">Vấn đề chính của bạn là gì?</label>
+                        <select class="field-input" id="mainIssue">
                             <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="restaurant" data-i18n="workplaceRestaurant">Nhà hàng / quán ăn</option>
-                            <option value="cafe" data-i18n="workplaceCafe">Cafe / takeaway</option>
-                            <option value="retail" data-i18n="workplaceRetail">Bán lẻ / cửa hàng</option>
-                            <option value="factory_warehouse" data-i18n="workplaceFactory">Nhà máy / kho</option>
-                            <option value="cleaning" data-i18n="workplaceCleaning">Vệ sinh</option>
-                            <option value="construction" data-i18n="workplaceConstruction">Xây dựng</option>
-                            <option value="care" data-i18n="workplaceCare">Chăm sóc / aged care</option>
-                            <option value="office" data-i18n="workplaceOffice">Văn phòng</option>
-                            <option value="other" data-i18n="optionOther">Khác</option>
-                            <option value="unknown" data-i18n="optionUnknown">Không chắc</option>
+                            <option value="pay_underpayment" data-i18n="mainIssuePay">Lương / trả lương không đúng</option>
+                            <option value="hours_overtime" data-i18n="mainIssueHours">Giờ làm / làm thêm / nghỉ giữa ca</option>
+                            <option value="documents_contract" data-i18n="mainIssueDocs">Hợp đồng / payslip / giấy tờ</option>
+                            <option value="visa_threat" data-i18n="mainIssueVisa">Visa / đe dọa liên quan tới visa</option>
+                            <option value="other" data-i18n="mainIssueOther">Khác</option>
                         </select>
-                        <div class="field-error" id="workplaceError" aria-live="polite"></div>
+                        <div class="field-error" id="mainIssueError" aria-live="polite"></div>
                     </div>
-                    <div class="field-group" id="workplaceOtherGroup" style="display: none;">
-                        <label class="field-label" for="workplaceOther" data-i18n="workplaceOtherLabel">Bạn có thể ghi rõ môi trường làm việc của mình</label>
-                        <input class="field-input" id="workplaceOther" type="text" data-i18n-placeholder="workplaceOtherPlaceholder" placeholder="Ví dụ: tiệm nail, salon tóc, giao hàng, làm vườn...">
-                        <div class="field-error" id="workplaceOtherError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="payBasis" data-i18n="payBasisLabel">Bạn được trả lương theo cách nào?</label>
-                        <select class="field-input" id="payBasis">
-                            <option value="">Chọn</option>
-                            <option value="hourly">Theo giờ</option>
-                            <option value="per_shift">Theo ca</option>
-                            <option value="daily">Theo ngày</option>
-                            <option value="weekly">Theo tuần</option>
-                            <option value="monthly">Theo tháng</option>
-                            <option value="piecework">Theo sản phẩm / công việc</option>
-                            <option value="unknown">Tôi không chắc</option>
-                        </select>
-                        <div class="field-error" id="payBasisError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group" id="payAmountGroup" style="display: none;">
-                        <label class="field-label" for="payAmount" id="payAmountLabel" data-i18n="payAmountHourly">Bạn được trả bao nhiêu cho mỗi giờ làm việc?</label>
-                        <input class="field-input" id="payAmount" type="number" min="0" step="0.01" data-i18n-placeholder="payAmountPlaceholder" placeholder="Ví dụ: 28.50">
-                        <div class="field-error" id="payAmountError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group" id="payPieceworkDescriptionGroup" style="display: none;">
-                        <label class="field-label" for="payPieceworkDescription" data-i18n="payPieceworkDescriptionLabel">Hãy mô tả ngắn cách tính lương theo sản phẩm / công việc của bạn.</label>
-                        <textarea class="field-input field-textarea" id="payPieceworkDescription" rows="3" data-i18n-placeholder="payPieceworkDescriptionPlaceholder" placeholder="Ví dụ: Tôi được trả theo số món ăn / số đơn hàng hoàn thành..."></textarea>
-                        <div class="field-error" id="payPieceworkDescriptionError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="workPattern" data-i18n="workPatternLabel">Bạn làm việc theo kiểu nào?</label>
-                        <select class="field-input" id="workPattern">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="regular_hours" data-i18n="workPatternRegular">Giờ làm khá cố định mỗi tuần</option>
-                            <option value="variable_hours" data-i18n="workPatternVariable">Số giờ/ca làm thay đổi theo tuần</option>
-                            <option value="on_call" data-i18n="workPatternOnCall">Tôi chỉ được gọi khi có ca</option>
-                            <option value="fixed_term" data-i18n="workPatternFixedTerm">Hợp đồng của tôi có ngày kết thúc</option>
-                            <option value="unknown" data-i18n="optionUnknown">Tôi không chắc</option>
-                        </select>
-                        <div class="field-error" id="workPatternError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="hoursPerWeek" data-i18n="hoursPerWeekLabel">Bạn thường làm khoảng bao nhiêu giờ mỗi tuần?</label>
-                        <input class="field-input" id="hoursPerWeek" type="number" min="0" step="1" data-i18n-placeholder="hoursPerWeekPlaceholder" placeholder="Ví dụ: 25">
-                        <div class="field-error" id="hoursPerWeekError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="hoursPerWeekStatus" data-i18n="hoursPerWeekStatusLabel">Bạn biết số giờ làm mỗi tuần không?</label>
-                        <select class="field-input" id="hoursPerWeekStatus">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="known" data-i18n="optionYes">Có</option>
-                            <option value="unknown" data-i18n="optionUnknownInfo">Không biết</option>
-                            <option value="not_sure" data-i18n="optionNotSure">Không chắc</option>
-                            <option value="no_info" data-i18n="optionNoInfo">Không có thông tin này</option>
-                        </select>
-                        <div class="field-error" id="hoursPerWeekStatusError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="hoursPerShift" data-i18n="hoursPerShiftLabel">Nếu biết, mỗi ca bạn thường làm khoảng bao nhiêu giờ?</label>
-                        <input class="field-input" id="hoursPerShift" type="number" min="0" step="0.5" data-i18n-placeholder="hoursPerShiftPlaceholder" placeholder="Ví dụ: 8">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="paidLeave" data-i18n="paidLeaveLabel">Bạn có nhận nghỉ phép có lương hoặc nghỉ ốm có lương không?</label>
-                        <select class="field-input" id="paidLeave">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="yes" data-i18n="optionYes">Có</option>
-                            <option value="no" data-i18n="optionNo">Không</option>
-                            <option value="unknown" data-i18n="optionUnknownInfo">Không biết</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="documentsAvailable" data-i18n="documentsAvailableLabel">Bạn có hợp đồng hoặc payslip để kiểm tra không?</label>
-                        <select class="field-input" id="documentsAvailable">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="yes" data-i18n="optionYes">Có</option>
-                            <option value="no_contract" data-i18n="documentsNoContract">Không có hợp đồng</option>
-                            <option value="no_payslip" data-i18n="documentsNoPayslip">Không có payslip</option>
-                            <option value="no_both" data-i18n="documentsNoBoth">Không có cả hai</option>
-                            <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="employmentTypeOnDocuments" data-i18n="employmentTypeLabel">Nếu có hợp đồng hoặc payslip, trên đó ghi loại hình làm việc của bạn là gì?</label>
-                        <select class="field-input" id="employmentTypeOnDocuments">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="full_time" data-i18n="employmentFullTime">Full-time / Toàn thời gian</option>
-                            <option value="part_time" data-i18n="employmentPartTime">Part-time / Bán thời gian</option>
-                            <option value="casual" data-i18n="employmentCasual">Casual</option>
-                            <option value="fixed_term" data-i18n="employmentFixedTerm">Fixed-term / Hợp đồng có thời hạn</option>
-                            <option value="other" data-i18n="employmentOther">Loại khác</option>
-                            <option value="not_stated" data-i18n="employmentNotStated">Không ghi</option>
-                            <option value="unknown" data-i18n="employmentUnknown">Tôi không biết / không hiểu</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="payslipStatus" data-i18n="payslipStatusLabel">Bạn có nhận được payslip / phiếu lương không?</label>
-                        <select class="field-input" id="payslipStatus">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="yes" data-i18n="optionYes">Có</option>
-                            <option value="no" data-i18n="optionNo">Không</option>
-                            <option value="sometimes" data-i18n="optionSometimes">Đôi khi</option>
-                            <option value="unknown" data-i18n="payslipUnknown">Không biết payslip là gì</option>
-                        </select>
-                        <div class="field-error" id="payslipStatusError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="paymentMethod" data-i18n="paymentMethodLabel">Bạn thường được trả lương bằng cách nào?</label>
-                        <select class="field-input" id="paymentMethod">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="bank_transfer" data-i18n="paymentBankTransfer">Chuyển khoản ngân hàng</option>
-                            <option value="cash" data-i18n="paymentCash">Tiền mặt</option>
-                            <option value="both" data-i18n="paymentBoth">Cả hai</option>
-                            <option value="other" data-i18n="paymentOther">Cách khác</option>
-                            <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="overtimeStatus" data-i18n="overtimeStatusLabel">Bạn có thường làm thêm ngoài giờ hoặc ở lại sau ca không?</label>
-                        <select class="field-input" id="overtimeStatus">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="yes" data-i18n="optionYes">Có</option>
-                            <option value="no" data-i18n="optionNo">Không</option>
-                            <option value="sometimes" data-i18n="optionSometimes">Đôi khi</option>
-                            <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
-                        </select>
-                        <div class="field-error" id="overtimeStatusError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="breakStatus" data-i18n="breakStatusLabel">Bạn có được nghỉ giữa ca không?</label>
-                        <select class="field-input" id="breakStatus">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="yes" data-i18n="optionYes">Có</option>
-                            <option value="no" data-i18n="optionNo">Không</option>
-                            <option value="sometimes" data-i18n="optionSometimes">Đôi khi</option>
-                            <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
-                        </select>
-                        <div class="field-error" id="breakStatusError" aria-live="polite"></div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="visaThreat" data-i18n="visaThreatLabel">Bạn có bị đe dọa về visa / thị thực không?</label>
-                        <select class="field-input" id="visaThreat">
-                            <option value="" data-i18n="selectPlaceholder">Chọn</option>
-                            <option value="yes" data-i18n="optionYes">Có</option>
-                            <option value="no" data-i18n="optionNo">Không</option>
-                            <option value="not_sure" data-i18n="optionNotSure">Không chắc</option>
-                        </select>
-                        <div class="field-error" id="visaThreatError" aria-live="polite"></div>
-                    </div>
+
                     <div class="field-group">
                         <label class="field-label" for="description" data-i18n="descriptionLabel">Hãy mô tả ngắn tình huống của bạn</label>
                         <textarea class="field-input field-textarea" id="description" rows="4" data-i18n-placeholder="descriptionPlaceholder" placeholder="Ví dụ: Tôi thường phải ở lại sau ca nhưng không được trả thêm..."></textarea>
                     </div>
+
+                    <p class="error" id="error" role="alert" data-i18n="errorDefault">Vui lòng chọn ít nhất một thời điểm để tiếp tục.</p>
+                    <div class="actions">
+                        <button class="secondary step-back" type="button" style="visibility: hidden;" data-i18n="backButton">← Quay lại</button>
+                        <button class="primary step-next" type="button" data-i18n="continueButton">Tiếp tục&nbsp; →</button>
+                    </div>
                 </div>
 
-                <p class="error" id="error" role="alert" data-i18n="errorDefault">Vui lòng chọn ít nhất một thời điểm để tiếp tục.</p>
-                <div class="actions"><button class="secondary" type="button" data-i18n="backButton">← Quay lại</button><button class="primary"
-                        id="continue" type="button" data-i18n="continueButton">Tiếp tục&nbsp; →</button></div>
+                <div class="step-panel" data-step="2">
+                    <p class="question-label" data-i18n="workplaceLabel">Thông tin công việc</p>
+                    <h2 data-i18n="workplaceHeading">Thông tin công việc</h2>
+
+                    <div class="field-list">
+                        <div class="field-group">
+                            <label class="field-label" for="workplace" data-i18n="workplaceLabel">Bạn đang làm việc ở môi trường nào?</label>
+                            <select class="field-input" id="workplace">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="restaurant" data-i18n="workplaceRestaurant">Nhà hàng / quán ăn</option>
+                                <option value="cafe" data-i18n="workplaceCafe">Cafe / takeaway</option>
+                                <option value="retail" data-i18n="workplaceRetail">Bán lẻ / cửa hàng</option>
+                                <option value="factory_warehouse" data-i18n="workplaceFactory">Nhà máy / kho</option>
+                                <option value="cleaning" data-i18n="workplaceCleaning">Vệ sinh</option>
+                                <option value="construction" data-i18n="workplaceConstruction">Xây dựng</option>
+                                <option value="care" data-i18n="workplaceCare">Chăm sóc / aged care</option>
+                                <option value="office" data-i18n="workplaceOffice">Văn phòng</option>
+                                <option value="other" data-i18n="optionOther">Khác</option>
+                                <option value="unknown" data-i18n="optionUnknown">Không chắc</option>
+                            </select>
+                            <div class="field-error" id="workplaceError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group" id="workplaceOtherGroup" style="display: none;">
+                            <label class="field-label" for="workplaceOther" data-i18n="workplaceOtherLabel">Bạn có thể ghi rõ môi trường làm việc của mình</label>
+                            <input class="field-input" id="workplaceOther" type="text" data-i18n-placeholder="workplaceOtherPlaceholder" placeholder="Ví dụ: tiệm nail, salon tóc, giao hàng, làm vườn...">
+                            <div class="field-error" id="workplaceOtherError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="workPattern" data-i18n="workPatternLabel">Bạn làm việc theo kiểu nào?</label>
+                            <select class="field-input" id="workPattern">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="regular_hours" data-i18n="workPatternRegular">Giờ làm khá cố định mỗi tuần</option>
+                                <option value="variable_hours" data-i18n="workPatternVariable">Số giờ/ca làm thay đổi theo tuần</option>
+                                <option value="on_call" data-i18n="workPatternOnCall">Tôi chỉ được gọi khi có ca</option>
+                                <option value="fixed_term" data-i18n="workPatternFixedTerm">Hợp đồng của tôi có ngày kết thúc</option>
+                                <option value="unknown" data-i18n="optionUnknown">Tôi không chắc</option>
+                            </select>
+                            <div class="field-error" id="workPatternError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="hoursPerWeekStatus" data-i18n="hoursPerWeekStatusLabel">Bạn biết số giờ làm mỗi tuần không?</label>
+                            <select class="field-input" id="hoursPerWeekStatus">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="known" data-i18n="optionYes">Có</option>
+                                <option value="unknown" data-i18n="optionUnknownInfo">Không biết</option>
+                                <option value="not_sure" data-i18n="optionNotSure">Không chắc</option>
+                                <option value="no_info" data-i18n="optionNoInfo">Không có thông tin này</option>
+                            </select>
+                            <div class="field-error" id="hoursPerWeekStatusError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="paidLeave" data-i18n="paidLeaveLabel">Bạn có nhận nghỉ phép có lương hoặc nghỉ ốm có lương không?</label>
+                            <select class="field-input" id="paidLeave">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="yes" data-i18n="optionYes">Có</option>
+                                <option value="no" data-i18n="optionNo">Không</option>
+                                <option value="unknown" data-i18n="optionUnknownInfo">Không biết</option>
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="documentsAvailable" data-i18n="documentsAvailableLabel">Bạn có hợp đồng hoặc payslip để kiểm tra không?</label>
+                            <select class="field-input" id="documentsAvailable">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="yes" data-i18n="optionYes">Có</option>
+                                <option value="no_contract" data-i18n="documentsNoContract">Không có hợp đồng</option>
+                                <option value="no_payslip" data-i18n="documentsNoPayslip">Không có payslip</option>
+                                <option value="no_both" data-i18n="documentsNoBoth">Không có cả hai</option>
+                                <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="employmentTypeOnDocuments" data-i18n="employmentTypeLabel">Nếu có hợp đồng hoặc payslip, trên đó ghi loại hình làm việc của bạn là gì?</label>
+                            <select class="field-input" id="employmentTypeOnDocuments">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="full_time" data-i18n="employmentFullTime">Full-time / Toàn thời gian</option>
+                                <option value="part_time" data-i18n="employmentPartTime">Part-time / Bán thời gian</option>
+                                <option value="casual" data-i18n="employmentCasual">Casual</option>
+                                <option value="fixed_term" data-i18n="employmentFixedTerm">Fixed-term / Hợp đồng có thời hạn</option>
+                                <option value="other" data-i18n="employmentOther">Loại khác</option>
+                                <option value="not_stated" data-i18n="employmentNotStated">Không ghi</option>
+                                <option value="unknown" data-i18n="employmentUnknown">Tôi không biết / không hiểu</option>
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="payBasis" data-i18n="payBasisLabel">Bạn được trả lương theo cách nào?</label>
+                            <select class="field-input" id="payBasis">
+                                <option value="">Chọn</option>
+                                <option value="hourly">Theo giờ</option>
+                                <option value="per_shift">Theo ca</option>
+                                <option value="daily">Theo ngày</option>
+                                <option value="weekly">Theo tuần</option>
+                                <option value="monthly">Theo tháng</option>
+                                <option value="piecework">Theo sản phẩm / công việc</option>
+                                <option value="unknown">Tôi không chắc</option>
+                            </select>
+                            <div class="field-error" id="payBasisError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group" id="payAmountGroup" style="display: none;">
+                            <label class="field-label" for="payAmount" id="payAmountLabel" data-i18n="payAmountHourly">Bạn được trả bao nhiêu cho mỗi giờ làm việc?</label>
+                            <input class="field-input" id="payAmount" type="number" min="0" step="0.01" data-i18n-placeholder="payAmountPlaceholder" placeholder="Ví dụ: 28.50">
+                            <div class="field-error" id="payAmountError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group" id="payPieceworkDescriptionGroup" style="display: none;">
+                            <label class="field-label" for="payPieceworkDescription" data-i18n="payPieceworkDescriptionLabel">Hãy mô tả ngắn cách tính lương theo sản phẩm / công việc của bạn.</label>
+                            <textarea class="field-input field-textarea" id="payPieceworkDescription" rows="3" data-i18n-placeholder="payPieceworkDescriptionPlaceholder" placeholder="Ví dụ: Tôi được trả theo số món ăn / số đơn hàng hoàn thành..."></textarea>
+                            <div class="field-error" id="payPieceworkDescriptionError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="payslipStatus" data-i18n="payslipStatusLabel">Bạn có nhận được payslip / phiếu lương không?</label>
+                            <select class="field-input" id="payslipStatus">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="yes" data-i18n="optionYes">Có</option>
+                                <option value="no" data-i18n="optionNo">Không</option>
+                                <option value="sometimes" data-i18n="optionSometimes">Đôi khi</option>
+                                <option value="unknown" data-i18n="payslipUnknown">Không biết payslip là gì</option>
+                            </select>
+                            <div class="field-error" id="payslipStatusError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="paymentMethod" data-i18n="paymentMethodLabel">Bạn thường được trả lương bằng cách nào?</label>
+                            <select class="field-input" id="paymentMethod">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="bank_transfer" data-i18n="paymentBankTransfer">Chuyển khoản ngân hàng</option>
+                                <option value="cash" data-i18n="paymentCash">Tiền mặt</option>
+                                <option value="both" data-i18n="paymentBoth">Cả hai</option>
+                                <option value="other" data-i18n="paymentOther">Cách khác</option>
+                                <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <p class="error" id="step2Error" role="alert" data-i18n="errorDefault">Vui lòng chọn ít nhất một thời điểm để tiếp tục.</p>
+                    <div class="actions">
+                        <button class="secondary step-back" type="button" data-i18n="backButton">← Quay lại</button>
+                        <button class="primary step-next" type="button" data-i18n="continueButton">Tiếp tục&nbsp; →</button>
+                    </div>
+                </div>
+
+                <div class="step-panel" data-step="3">
+                    <p class="question-label" data-i18n="workTimeLabel">Thời gian làm việc</p>
+                    <h2 data-i18n="workTimeHeading">Bạn thường làm việc vào thời điểm nào?</h2>
+                    <p class="question-help" data-i18n="workTimeHelp">Có thể chọn nhiều đáp án.</p>
+
+                    <div class="choices" id="choices">
+                        <button class="choice" type="button" aria-pressed="false"><span class="check">✓</span><span><strong data-i18n="workTimeWeekdayTitle">Ngày thường</strong><small data-i18n="workTimeWeekdaySubtitle">Thứ Hai đến Thứ Sáu</small></span></button>
+                        <button class="choice" type="button" aria-pressed="false"><span class="check">✓</span><span><strong data-i18n="workTimeNightTitle">Buổi tối hoặc ban đêm</strong><small data-i18n="workTimeNightSubtitle">Ca làm ngoài giờ ban ngày thông thường</small></span></button>
+                        <button class="choice" type="button" aria-pressed="true"><span class="check">✓</span><span><strong data-i18n="workTimeWeekendTitle">Cuối tuần</strong><small data-i18n="workTimeWeekendSubtitle">Thứ Bảy hoặc Chủ Nhật</small></span></button>
+                        <button class="choice" type="button" aria-pressed="false"><span class="check">✓</span><span><strong data-i18n="workTimeHolidayTitle">Ngày lễ</strong><small data-i18n="workTimeHolidaySubtitle">Public holiday tại bang hoặc vùng của bạn</small></span></button>
+                        <button class="choice" type="button" aria-pressed="false"><span class="check">✓</span><span><strong data-i18n="workTimeVariableTitle">Lịch thay đổi thường xuyên</strong><small data-i18n="workTimeVariableSubtitle">Không có lịch làm cố định mỗi tuần</small></span></button>
+                        <button class="choice" type="button" aria-pressed="false"><span class="check">✓</span><span><strong data-i18n="workTimeUnknownTitle">Tôi không chắc</strong><small data-i18n="workTimeUnknownSubtitle">Bạn vẫn có thể tiếp tục kiểm tra</small></span></button>
+                    </div>
+                    <div class="field-error" id="workTimeError" aria-live="polite"></div>
+
+                    <div class="field-list">
+                        <div class="field-group">
+                            <label class="field-label" for="hoursPerWeek" data-i18n="hoursPerWeekLabel">Bạn thường làm khoảng bao nhiêu giờ mỗi tuần?</label>
+                            <input class="field-input" id="hoursPerWeek" type="number" min="0" step="1" data-i18n-placeholder="hoursPerWeekPlaceholder" placeholder="Ví dụ: 25">
+                            <div class="field-error" id="hoursPerWeekError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="hoursPerShift" data-i18n="hoursPerShiftLabel">Nếu biết, mỗi ca bạn thường làm khoảng bao nhiêu giờ?</label>
+                            <input class="field-input" id="hoursPerShift" type="number" min="0" step="0.5" data-i18n-placeholder="hoursPerShiftPlaceholder" placeholder="Ví dụ: 8">
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="overtimeStatus" data-i18n="overtimeStatusLabel">Bạn có thường làm thêm ngoài giờ hoặc ở lại sau ca không?</label>
+                            <select class="field-input" id="overtimeStatus">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="yes" data-i18n="optionYes">Có</option>
+                                <option value="no" data-i18n="optionNo">Không</option>
+                                <option value="sometimes" data-i18n="optionSometimes">Đôi khi</option>
+                                <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
+                            </select>
+                            <div class="field-error" id="overtimeStatusError" aria-live="polite"></div>
+                        </div>
+
+                        <div class="field-group">
+                            <label class="field-label" for="breakStatus" data-i18n="breakStatusLabel">Bạn có được nghỉ giữa ca không?</label>
+                            <select class="field-input" id="breakStatus">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="yes" data-i18n="optionYes">Có</option>
+                                <option value="no" data-i18n="optionNo">Không</option>
+                                <option value="sometimes" data-i18n="optionSometimes">Đôi khi</option>
+                                <option value="unknown" data-i18n="optionNotSure">Không chắc</option>
+                            </select>
+                            <div class="field-error" id="breakStatusError" aria-live="polite"></div>
+                        </div>
+                    </div>
+
+                    <p class="error" id="step3Error" role="alert" data-i18n="errorDefault">Vui lòng chọn ít nhất một thời điểm để tiếp tục.</p>
+                    <div class="actions">
+                        <button class="secondary step-back" type="button" data-i18n="backButton">← Quay lại</button>
+                        <button class="primary step-next" type="button" data-i18n="continueButton">Tiếp tục&nbsp; →</button>
+                    </div>
+                </div>
+
+                <div class="step-panel" data-step="4">
+                    <p class="question-label">Mức độ rủi ro</p>
+                    <h2>Rủi ro và an toàn</h2>
+
+                    <div class="field-list">
+                        <div class="field-group">
+                            <label class="field-label" for="visaThreat" data-i18n="visaThreatLabel">Bạn có bị đe dọa về visa / thị thực không?</label>
+                            <select class="field-input" id="visaThreat">
+                                <option value="" data-i18n="selectPlaceholder">Chọn</option>
+                                <option value="yes" data-i18n="optionYes">Có</option>
+                                <option value="no" data-i18n="optionNo">Không</option>
+                                <option value="not_sure" data-i18n="optionNotSure">Không chắc</option>
+                            </select>
+                            <div class="field-error" id="visaThreatError" aria-live="polite"></div>
+                        </div>
+                    </div>
+
+                    <p class="error" id="step4Error" role="alert" data-i18n="errorDefault">Vui lòng trả lời câu hỏi rủi ro trước khi tiếp tục.</p>
+                    <div class="actions">
+                        <button class="secondary step-back" type="button" data-i18n="backButton">← Quay lại</button>
+                        <button class="primary step-next step-submit" type="button">Phân tích tình huống</button>
+                    </div>
+                </div>
             </section>
 
             <section class="result-view" id="result-view" aria-live="polite" style="display: none;">
