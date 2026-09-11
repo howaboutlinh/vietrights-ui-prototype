@@ -119,8 +119,12 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="hoursPerWeek">Số giờ làm mỗi tuần</label>
+                        <label class="field-label" for="hoursPerWeek">Bạn thường làm khoảng bao nhiêu giờ mỗi tuần?</label>
                         <input class="field-input" id="hoursPerWeek" type="number" min="0" step="1" placeholder="Ví dụ: 25">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="hoursPerShift">Nếu biết, mỗi ca bạn thường làm khoảng bao nhiêu giờ?</label>
+                        <input class="field-input" id="hoursPerShift" type="number" min="0" step="0.5" placeholder="Ví dụ: 8">
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="paidLeave">Bạn có nhận nghỉ phép có lương hoặc nghỉ ốm có lương không?</label>
@@ -173,8 +177,18 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="overtime">Bạn có thường làm thêm ngoài giờ hoặc ở lại sau ca không?</label>
-                        <select class="field-input" id="overtime">
+                        <label class="field-label" for="overtimeStatus">Bạn có thường làm thêm ngoài giờ hoặc ở lại sau ca không?</label>
+                        <select class="field-input" id="overtimeStatus">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="sometimes">Đôi khi</option>
+                            <option value="unknown">Không chắc</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="breakStatus">Bạn có được nghỉ giữa ca không?</label>
+                        <select class="field-input" id="breakStatus">
                             <option value="">Chọn</option>
                             <option value="yes">Có</option>
                             <option value="no">Không</option>

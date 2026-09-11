@@ -3,9 +3,10 @@ const error = document.getElementById('error');
 const questionView = document.getElementById('question-view');
 const resultView = document.getElementById('result-view');
 const documentsAvailableField = document.getElementById('documentsAvailable');
-const payslipStatusField = document.getElementById('payslipStatus');
 const casualShownOnDocumentsField = document.getElementById('casualShownOnDocuments');
-const casualQuestionGroup = casualShownOnDocumentsField?.closest('.field-group');
+const casualQuestionGroup = casualShownOnDocumentsField && (
+    casualShownOnDocumentsField.closest ? casualShownOnDocumentsField.closest('.field-group') : casualShownOnDocumentsField.parentElement
+);
 
 function updateCasualDocumentVisibility() {
     if (!documentsAvailableField || !casualShownOnDocumentsField || !casualQuestionGroup) {
@@ -13,12 +14,7 @@ function updateCasualDocumentVisibility() {
     }
 
     const availability = documentsAvailableField.value;
-    const payslipStatus = payslipStatusField?.value || '';
-    const hasPayslip = ['yes', 'sometimes'].includes(payslipStatus);
-
-    const shouldShowCasualQuestion = availability === 'yes'
-        || availability === 'no_payslip'
-        || (availability === 'no_contract' && hasPayslip);
+    const shouldShowCasualQuestion = availability === 'yes' || availability === 'no_contract' || availability === 'no_payslip';
 
     if (shouldShowCasualQuestion) {
         casualQuestionGroup.style.display = '';
@@ -55,27 +51,34 @@ function collectCaseData() {
     const hourlyPayConfirmedValue = getTextValue('hourlyPayConfirmed');
     const payslipStatusValue = getTextValue('payslipStatus');
     const paymentMethodValue = getTextValue('paymentMethod');
+    const overtimeStatusValue = getTextValue('overtimeStatus');
+    const breakStatusValue = getTextValue('breakStatus');
 
     const documentAvailability = documentsAvailableValue === 'no_both' ? 'none' : (documentsAvailableValue || 'unknown');
-    const casualShownOnDocuments = documentsAvailableValue === 'no_both' || documentsAvailableValue === 'unknown'
-        ? 'unknown'
-        : (casualValue || 'unknown');
+    const shouldShowCasualQuestion = ['yes', 'no_contract', 'no_payslip'].includes(documentsAvailableValue || '');
+    const casualShownOnDocuments = shouldShowCasualQuestion ? (casualValue || 'unknown') : 'unknown';
 
     return {
         workplace: getTextValue('workplace'),
         employmentType: explicitEmploymentType || 'unknown',
         workTime: selectedWorkTimes,
         description: getTextValue('description'),
-        overtime: getTextValue('overtime'),
+        overtimeStatus: overtimeStatusValue || 'unknown',
+        breakStatus: breakStatusValue || 'unknown',
+        hoursPerWeek: getNumberValue('hoursPerWeek'),
+        hoursPerShift: getNumberValue('hoursPerShift'),
         visaThreat: getTextValue('visaThreat'),
         documentAvailability,
         casualShownOnDocuments,
         employmentPattern: {
             workPattern,
             hoursPerWeek: getNumberValue('hoursPerWeek'),
+            hoursPerShift: getNumberValue('hoursPerShift'),
             paidLeave: paidLeaveValue === 'yes' ? true : paidLeaveValue === 'no' ? false : null,
             documentAvailability,
-            casualShownOnDocuments
+            casualShownOnDocuments,
+            overtimeStatus: overtimeStatusValue || 'unknown',
+            breakStatus: breakStatusValue || 'unknown'
         },
         pay: {
             hourlyPay: getNumberValue('hourlyPay'),
@@ -86,12 +89,8 @@ function collectCaseData() {
     };
 }
 
-if (documentsAvailableField) {
+if (documentsAvailableField && typeof documentsAvailableField.addEventListener === 'function') {
     documentsAvailableField.addEventListener('change', updateCasualDocumentVisibility);
-}
-
-if (payslipStatusField) {
-    payslipStatusField.addEventListener('change', updateCasualDocumentVisibility);
 }
 
 updateCasualDocumentVisibility();
