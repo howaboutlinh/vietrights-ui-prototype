@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
@@ -7,6 +8,17 @@ from google import genai
 from google.genai import types
 
 load_dotenv()
+
+
+def _is_retryable_gemini_error(exc: Exception) -> bool:
+    status_code = getattr(exc, "status_code", None)
+    if status_code is not None:
+        status_code = str(status_code).upper()
+        if status_code in {"503", "UNAVAILABLE"}:
+            return True
+
+    text = str(exc).upper()
+    return "503" in text or "UNAVAILABLE" in text
 
 
 def _coerce_list(value: Any) -> List[str]:
@@ -68,18 +80,27 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         + json.dumps(case_data, ensure_ascii=False)
     )
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=user_prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.3,
-                response_mime_type="application/json",
-            ),
-        )
-    except Exception as exc:
-        raise RuntimeError(f"Gemini API error: {exc}") from exc
+    model_name = "gemini-3.6-flash"
+    max_retries = 2
+    last_exc = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.3,
+                    response_mime_type="application/json",
+                ),
+            )
+            break
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= max_retries or not _is_retryable_gemini_error(exc):
+                raise RuntimeError(f"Gemini API error: {exc}") from exc
+            time.sleep(1.5)
 
     content = getattr(response, "text", None)
     if not content:
