@@ -2,6 +2,31 @@ const choiceButtons = [...document.querySelectorAll('.choice')];
 const error = document.getElementById('error');
 const questionView = document.getElementById('question-view');
 const resultView = document.getElementById('result-view');
+const documentsAvailableField = document.getElementById('documentsAvailable');
+const payslipStatusField = document.getElementById('payslipStatus');
+const casualShownOnDocumentsField = document.getElementById('casualShownOnDocuments');
+const casualQuestionGroup = casualShownOnDocumentsField?.closest('.field-group');
+
+function updateCasualDocumentVisibility() {
+    if (!documentsAvailableField || !casualShownOnDocumentsField || !casualQuestionGroup) {
+        return;
+    }
+
+    const availability = documentsAvailableField.value;
+    const payslipStatus = payslipStatusField?.value || '';
+    const hasPayslip = ['yes', 'sometimes'].includes(payslipStatus);
+
+    const shouldShowCasualQuestion = availability === 'yes'
+        || availability === 'no_payslip'
+        || (availability === 'no_contract' && hasPayslip);
+
+    if (shouldShowCasualQuestion) {
+        casualQuestionGroup.style.display = '';
+    } else {
+        casualQuestionGroup.style.display = 'none';
+        casualShownOnDocumentsField.value = '';
+    }
+}
 
 function collectCaseData() {
     const getTextValue = (id) => {
@@ -31,6 +56,11 @@ function collectCaseData() {
     const payslipStatusValue = getTextValue('payslipStatus');
     const paymentMethodValue = getTextValue('paymentMethod');
 
+    const documentAvailability = documentsAvailableValue === 'no_both' ? 'none' : (documentsAvailableValue || 'unknown');
+    const casualShownOnDocuments = documentsAvailableValue === 'no_both' || documentsAvailableValue === 'unknown'
+        ? 'unknown'
+        : (casualValue || 'unknown');
+
     return {
         workplace: getTextValue('workplace'),
         employmentType: explicitEmploymentType || 'unknown',
@@ -38,12 +68,14 @@ function collectCaseData() {
         description: getTextValue('description'),
         overtime: getTextValue('overtime'),
         visaThreat: getTextValue('visaThreat'),
+        documentAvailability,
+        casualShownOnDocuments,
         employmentPattern: {
             workPattern,
             hoursPerWeek: getNumberValue('hoursPerWeek'),
             paidLeave: paidLeaveValue === 'yes' ? true : paidLeaveValue === 'no' ? false : null,
-            documentsAvailable: documentsAvailableValue || 'unknown',
-            casualShownOnDocuments: casualValue || 'unknown'
+            documentAvailability,
+            casualShownOnDocuments
         },
         pay: {
             hourlyPay: getNumberValue('hourlyPay'),
@@ -53,6 +85,16 @@ function collectCaseData() {
         }
     };
 }
+
+if (documentsAvailableField) {
+    documentsAvailableField.addEventListener('change', updateCasualDocumentVisibility);
+}
+
+if (payslipStatusField) {
+    payslipStatusField.addEventListener('change', updateCasualDocumentVisibility);
+}
+
+updateCasualDocumentVisibility();
 
 choiceButtons.forEach((button) => {
     button.addEventListener('click', () => {
