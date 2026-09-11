@@ -7,6 +7,41 @@ const casualShownOnDocumentsField = document.getElementById('casualShownOnDocume
 const casualQuestionGroup = casualShownOnDocumentsField && (
     casualShownOnDocumentsField.closest ? casualShownOnDocumentsField.closest('.field-group') : casualShownOnDocumentsField.parentElement
 );
+const mainIssueField = document.getElementById('mainIssue');
+
+const UNKNOWN_VALUES = new Set(['unknown', 'not_sure', 'no_info', 'no_data']);
+
+function clearFieldErrors() {
+    document.querySelectorAll('.field-error').forEach((node) => {
+        node.textContent = '';
+        node.style.display = 'none';
+    });
+}
+
+function showFieldError(id, message) {
+    const node = document.getElementById(id);
+    if (!node) {
+        return;
+    }
+
+    node.textContent = message;
+    node.style.display = 'block';
+}
+
+function isExplicitUnknown(value) {
+    if (value === null || value === undefined) return false;
+    return UNKNOWN_VALUES.has(String(value).trim().toLowerCase()) || String(value).trim() === 'Không biết' || String(value).trim() === 'Không chắc' || String(value).trim() === 'Không có thông tin này';
+}
+
+function fieldIsAnswered(value) {
+    if (value === null || value === undefined) return false;
+    const text = String(value).trim();
+    return text !== '' && !isExplicitUnknown(text);
+}
+
+function hasSelectedWorkTime() {
+    return choiceButtons.some((button) => button.getAttribute('aria-pressed') === 'true');
+}
 
 function updateCasualDocumentVisibility() {
     if (!documentsAvailableField || !casualShownOnDocumentsField || !casualQuestionGroup) {
@@ -22,6 +57,103 @@ function updateCasualDocumentVisibility() {
         casualQuestionGroup.style.display = 'none';
         casualShownOnDocumentsField.value = '';
     }
+}
+
+function getMainIssue() {
+    if (!mainIssueField) return '';
+    return String(mainIssueField.value || '').trim().toLowerCase();
+}
+
+function validateContextualFields() {
+    clearFieldErrors();
+
+    let valid = true;
+    const mainIssue = getMainIssue();
+
+    const workplaceValue = document.getElementById('workplace')?.value || '';
+    const visaThreatValue = document.getElementById('visaThreat')?.value || '';
+    const workPatternValue = document.getElementById('workPattern')?.value || '';
+    const overtimeValue = document.getElementById('overtimeStatus')?.value || '';
+    const breakValue = document.getElementById('breakStatus')?.value || '';
+    const hoursPerWeekValue = document.getElementById('hoursPerWeek')?.value || '';
+    const hourlyPayValue = document.getElementById('hourlyPay')?.value || '';
+    const payslipStatusValue = document.getElementById('payslipStatus')?.value || '';
+    const hourlyPayStatusValue = document.getElementById('hourlyPayStatus')?.value || '';
+    const hoursPerWeekStatusValue = document.getElementById('hoursPerWeekStatus')?.value || '';
+
+    if (!workplaceValue) {
+        showFieldError('workplaceError', 'Vui lòng chọn môi trường làm việc.');
+        valid = false;
+    }
+
+    if (!workPatternValue) {
+        showFieldError('workPatternError', 'Vui lòng chọn kiểu làm việc.');
+        valid = false;
+    }
+
+    if (!visaThreatValue) {
+        showFieldError('visaThreatError', 'Vui lòng cho biết tình trạng visa.');
+        valid = false;
+    }
+
+    if (!hasSelectedWorkTime()) {
+        showFieldError('workTimeError', 'Vui lòng chọn ít nhất một thời điểm làm việc.');
+        valid = false;
+    }
+
+    const payIssues = ['pay_underpayment', 'documents_contract'];
+    const hoursIssues = ['hours_overtime'];
+    const isPayIssue = payIssues.includes(mainIssue);
+    const isHoursIssue = hoursIssues.includes(mainIssue);
+
+    if (isPayIssue) {
+        const hasHourlyPay = fieldIsAnswered(hourlyPayValue) || (hourlyPayStatusValue && isExplicitUnknown(hourlyPayStatusValue));
+        const hasHoursPerWeek = fieldIsAnswered(hoursPerWeekValue) || (hoursPerWeekStatusValue && isExplicitUnknown(hoursPerWeekStatusValue));
+
+        if (!hasHourlyPay) {
+            showFieldError('hourlyPayError', 'Vui lòng nhập mức lương theo giờ hoặc chọn “Không biết”.');
+            valid = false;
+        }
+
+        if (!hasHoursPerWeek) {
+            showFieldError('hoursPerWeekError', 'Vui lòng nhập số giờ làm mỗi tuần hoặc chọn “Không biết”.');
+            valid = false;
+        }
+
+        if (!payslipStatusValue) {
+            showFieldError('payslipStatusError', 'Vui lòng cho biết bạn có nhận payslip không.');
+            valid = false;
+        }
+    }
+
+    if (isHoursIssue) {
+        const hasHoursPerWeek = fieldIsAnswered(hoursPerWeekValue) || (hoursPerWeekStatusValue && isExplicitUnknown(hoursPerWeekStatusValue));
+
+        if (!hasHoursPerWeek) {
+            showFieldError('hoursPerWeekError', 'Vui lòng nhập số giờ làm mỗi tuần hoặc chọn “Không biết”.');
+            valid = false;
+        }
+
+        if (!overtimeValue) {
+            showFieldError('overtimeStatusError', 'Vui lòng cho biết bạn có làm thêm giờ không.');
+            valid = false;
+        }
+
+        if (!breakValue) {
+            showFieldError('breakStatusError', 'Vui lòng cho biết bạn có được nghỉ giữa ca không.');
+            valid = false;
+        }
+    }
+
+    if (mainIssue === 'pay_underpayment' || mainIssue === 'hours_overtime') {
+        const hasPayInfo = fieldIsAnswered(hourlyPayValue) || (hourlyPayStatusValue && isExplicitUnknown(hourlyPayStatusValue));
+        const hasWeekInfo = fieldIsAnswered(hoursPerWeekValue) || (hoursPerWeekStatusValue && isExplicitUnknown(hoursPerWeekStatusValue));
+        if (!hasPayInfo && !hasWeekInfo && !isPayIssue && !isHoursIssue) {
+            // no-op; branch handled above
+        }
+    }
+
+    return valid;
 }
 
 function collectCaseData() {
@@ -43,6 +175,7 @@ function collectCaseData() {
         .map((button) => button.querySelector('strong')?.textContent?.trim())
         .filter(Boolean);
 
+    const mainIssue = getTextValue('mainIssue') || 'other';
     const explicitEmploymentType = getTextValue('employmentType');
     const workPattern = getTextValue('workPattern') || 'unknown';
     const paidLeaveValue = getTextValue('paidLeave');
@@ -59,6 +192,7 @@ function collectCaseData() {
     const casualShownOnDocuments = shouldShowCasualQuestion ? (casualValue || 'unknown') : 'unknown';
 
     return {
+        mainIssue,
         workplace: getTextValue('workplace'),
         employmentType: explicitEmploymentType || 'unknown',
         workTime: selectedWorkTimes,
@@ -203,12 +337,11 @@ choiceButtons.forEach((button) => {
 });
 
 document.getElementById('continue').addEventListener('click', async () => {
-    const hasSelection = choiceButtons.some(
-        (button) => button.getAttribute('aria-pressed') === 'true'
-    );
+    clearFieldErrors();
 
-    if (!hasSelection) {
-        error.style.display = 'block';
+    if (!validateContextualFields()) {
+        error.style.display = 'none';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
 

@@ -48,6 +48,19 @@
                     <span>Để bảo vệ quyền riêng tư, không nhập số hộ chiếu, visa, TFN hoặc thông tin ngân hàng.</span>
                 </div>
 
+                <div class="field-group">
+                    <label class="field-label" for="mainIssue">Vấn đề chính của bạn là gì?</label>
+                    <select class="field-input" id="mainIssue">
+                        <option value="">Chọn</option>
+                        <option value="pay_underpayment">Lương / trả lương không đúng</option>
+                        <option value="hours_overtime">Giờ làm / làm thêm / nghỉ giữa ca</option>
+                        <option value="documents_contract">Hợp đồng / payslip / giấy tờ</option>
+                        <option value="visa_threat">Visa / đe dọa liên quan tới visa</option>
+                        <option value="other">Khác</option>
+                    </select>
+                    <div class="field-error" id="mainIssueError" aria-live="polite"></div>
+                </div>
+
                 <div class="progress-meta"><strong>Đang làm rõ tình huống</strong><span>Đã thu thập 3/5 nhóm thông
                         tin</span></div>
                 <div class="progress" role="progressbar" aria-label="Tiến độ" aria-valuemin="0" aria-valuemax="100"
@@ -77,6 +90,7 @@
                             class="check">✓</span><span><strong>Tôi không chắc</strong><small>Bạn vẫn có thể tiếp tục
                                 kiểm tra</small></span></button>
                 </div>
+                <div class="field-error" id="workTimeError" aria-live="polite"></div>
 
                 <div class="field-list">
                     <div class="field-group">
@@ -94,18 +108,23 @@
                             <option value="other">Khác</option>
                             <option value="unknown">Không chắc</option>
                         </select>
+                        <div class="field-error" id="workplaceError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="hourlyPay">Bạn được trả khoảng bao nhiêu mỗi giờ?</label>
                         <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="28.50">
+                        <div class="field-error" id="hourlyPayError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="hourlyPayConfirmed">Bạn có chắc đây là mức lương theo giờ không?</label>
-                        <select class="field-input" id="hourlyPayConfirmed">
+                        <label class="field-label" for="hourlyPayStatus">Bạn biết mức lương theo giờ không?</label>
+                        <select class="field-input" id="hourlyPayStatus">
                             <option value="">Chọn</option>
-                            <option value="yes">Có</option>
-                            <option value="no">Không chắc</option>
+                            <option value="known">Có</option>
+                            <option value="unknown">Không biết</option>
+                            <option value="not_sure">Không chắc</option>
+                            <option value="no_info">Không có thông tin này</option>
                         </select>
+                        <div class="field-error" id="hourlyPayStatusError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="workPattern">Bạn làm việc theo kiểu nào?</label>
@@ -117,10 +136,23 @@
                             <option value="fixed_term">Hợp đồng của tôi có ngày kết thúc</option>
                             <option value="unknown">Tôi không chắc</option>
                         </select>
+                        <div class="field-error" id="workPatternError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="hoursPerWeek">Bạn thường làm khoảng bao nhiêu giờ mỗi tuần?</label>
                         <input class="field-input" id="hoursPerWeek" type="number" min="0" step="1" placeholder="Ví dụ: 25">
+                        <div class="field-error" id="hoursPerWeekError" aria-live="polite"></div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="hoursPerWeekStatus">Bạn biết số giờ làm mỗi tuần không?</label>
+                        <select class="field-input" id="hoursPerWeekStatus">
+                            <option value="">Chọn</option>
+                            <option value="known">Có</option>
+                            <option value="unknown">Không biết</option>
+                            <option value="not_sure">Không chắc</option>
+                            <option value="no_info">Không có thông tin này</option>
+                        </select>
+                        <div class="field-error" id="hoursPerWeekStatusError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="hoursPerShift">Nếu biết, mỗi ca bạn thường làm khoảng bao nhiêu giờ?</label>
@@ -164,6 +196,7 @@
                             <option value="sometimes">Đôi khi</option>
                             <option value="unknown">Không biết payslip là gì</option>
                         </select>
+                        <div class="field-error" id="payslipStatusError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="paymentMethod">Bạn thường được trả lương bằng cách nào?</label>
@@ -185,6 +218,7 @@
                             <option value="sometimes">Đôi khi</option>
                             <option value="unknown">Không chắc</option>
                         </select>
+                        <div class="field-error" id="overtimeStatusError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="breakStatus">Bạn có được nghỉ giữa ca không?</label>
@@ -195,6 +229,7 @@
                             <option value="sometimes">Đôi khi</option>
                             <option value="unknown">Không chắc</option>
                         </select>
+                        <div class="field-error" id="breakStatusError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="visaThreat">Bạn có bị đe dọa về visa / thị thực không?</label>
@@ -204,6 +239,7 @@
                             <option value="no">Không</option>
                             <option value="not_sure">Không chắc</option>
                         </select>
+                        <div class="field-error" id="visaThreatError" aria-live="polite"></div>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="description">Hãy mô tả ngắn tình huống của bạn</label>
