@@ -80,12 +80,32 @@
 
                 <div class="field-list">
                     <div class="field-group">
-                        <label class="field-label" for="workplace">Nơi làm việc / ngành</label>
-                        <input class="field-input" id="workplace" type="text" placeholder="Ví dụ: nhà hàng, kho, văn phòng...">
+                        <label class="field-label" for="workplace">Bạn đang làm việc ở môi trường nào?</label>
+                        <select class="field-input" id="workplace">
+                            <option value="">Chọn</option>
+                            <option value="restaurant">Nhà hàng / quán ăn</option>
+                            <option value="cafe">Cafe / takeaway</option>
+                            <option value="retail">Bán lẻ / cửa hàng</option>
+                            <option value="factory_warehouse">Nhà máy / kho</option>
+                            <option value="cleaning">Vệ sinh</option>
+                            <option value="construction">Xây dựng</option>
+                            <option value="care">Chăm sóc / aged care</option>
+                            <option value="office">Văn phòng</option>
+                            <option value="other">Khác</option>
+                            <option value="unknown">Không chắc</option>
+                        </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="hourlyPay">Mức lương theo giờ</label>
-                        <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="Nhập số tiền / giờ">
+                        <label class="field-label" for="hourlyPay">Bạn được trả khoảng bao nhiêu mỗi giờ?</label>
+                        <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="28.50">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="hourlyPayConfirmed">Bạn có chắc đây là mức lương theo giờ không?</label>
+                        <select class="field-input" id="hourlyPayConfirmed">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không chắc</option>
+                        </select>
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="workPattern">Bạn làm việc theo kiểu nào?</label>
@@ -112,7 +132,18 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="casualShownOnDocuments">Trong hợp đồng hoặc payslip có ghi "casual" không?</label>
+                        <label class="field-label" for="documentsAvailable">Bạn có hợp đồng hoặc payslip để kiểm tra không?</label>
+                        <select class="field-input" id="documentsAvailable">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no_contract">Không có hợp đồng</option>
+                            <option value="no_payslip">Không có payslip</option>
+                            <option value="no_both">Không có cả hai</option>
+                            <option value="unknown">Không chắc</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="casualShownOnDocuments">Nếu có, trên đó có ghi "casual" không?</label>
                         <select class="field-input" id="casualShownOnDocuments">
                             <option value="">Chọn</option>
                             <option value="yes">Có</option>
@@ -121,30 +152,34 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="receivesPayslip">Bạn có nhận payslip không?</label>
-                        <select class="field-input" id="receivesPayslip">
+                        <label class="field-label" for="payslipStatus">Bạn có nhận được payslip / phiếu lương không?</label>
+                        <select class="field-input" id="payslipStatus">
                             <option value="">Chọn</option>
                             <option value="yes">Có</option>
                             <option value="no">Không</option>
-                            <option value="not_sure">Không chắc</option>
+                            <option value="sometimes">Đôi khi</option>
+                            <option value="unknown">Không biết payslip là gì</option>
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="paidCash">Bạn có nhận lương bằng tiền mặt không?</label>
-                        <select class="field-input" id="paidCash">
+                        <label class="field-label" for="paymentMethod">Bạn thường được trả lương bằng cách nào?</label>
+                        <select class="field-input" id="paymentMethod">
                             <option value="">Chọn</option>
-                            <option value="yes">Có</option>
-                            <option value="no">Không</option>
-                            <option value="not_sure">Không chắc</option>
+                            <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+                            <option value="cash">Tiền mặt</option>
+                            <option value="both">Cả hai</option>
+                            <option value="other">Cách khác</option>
+                            <option value="unknown">Không chắc</option>
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="overtime">Bạn có làm thêm giờ không?</label>
+                        <label class="field-label" for="overtime">Bạn có thường làm thêm ngoài giờ hoặc ở lại sau ca không?</label>
                         <select class="field-input" id="overtime">
                             <option value="">Chọn</option>
                             <option value="yes">Có</option>
                             <option value="no">Không</option>
-                            <option value="sometimes">Thỉnh thoảng</option>
+                            <option value="sometimes">Đôi khi</option>
+                            <option value="unknown">Không chắc</option>
                         </select>
                     </div>
                     <div class="field-group">
@@ -157,8 +192,8 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="description">Mô tả ngắn về tình huống</label>
-                        <textarea class="field-input field-textarea" id="description" rows="4" placeholder="Mô tả tình huống của bạn..."></textarea>
+                        <label class="field-label" for="description">Hãy mô tả ngắn tình huống của bạn</label>
+                        <textarea class="field-input field-textarea" id="description" rows="4" placeholder="Ví dụ: Tôi thường phải ở lại sau ca nhưng không được trả thêm..."></textarea>
                     </div>
                 </div>
 

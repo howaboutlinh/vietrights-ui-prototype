@@ -25,23 +25,31 @@ function collectCaseData() {
     const explicitEmploymentType = getTextValue('employmentType');
     const workPattern = getTextValue('workPattern') || 'unknown';
     const paidLeaveValue = getTextValue('paidLeave');
+    const documentsAvailableValue = getTextValue('documentsAvailable');
     const casualValue = getTextValue('casualShownOnDocuments');
+    const hourlyPayConfirmedValue = getTextValue('hourlyPayConfirmed');
+    const payslipStatusValue = getTextValue('payslipStatus');
+    const paymentMethodValue = getTextValue('paymentMethod');
 
     return {
         workplace: getTextValue('workplace'),
         employmentType: explicitEmploymentType || 'unknown',
-        hourlyPay: getNumberValue('hourlyPay'),
-        receivesPayslip: getTextValue('receivesPayslip'),
-        paidCash: getTextValue('paidCash'),
-        overtime: getTextValue('overtime'),
-        visaThreat: getTextValue('visaThreat'),
         workTime: selectedWorkTimes,
         description: getTextValue('description'),
+        overtime: getTextValue('overtime'),
+        visaThreat: getTextValue('visaThreat'),
         employmentPattern: {
             workPattern,
             hoursPerWeek: getNumberValue('hoursPerWeek'),
             paidLeave: paidLeaveValue === 'yes' ? true : paidLeaveValue === 'no' ? false : null,
+            documentsAvailable: documentsAvailableValue || 'unknown',
             casualShownOnDocuments: casualValue || 'unknown'
+        },
+        pay: {
+            hourlyPay: getNumberValue('hourlyPay'),
+            hourlyPayConfirmed: hourlyPayConfirmedValue === 'yes' ? true : hourlyPayConfirmedValue === 'no' ? false : 'unknown',
+            payslipStatus: payslipStatusValue || 'unknown',
+            paymentMethod: paymentMethodValue || 'unknown'
         }
     };
 }
