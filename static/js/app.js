@@ -89,6 +89,105 @@ function collectCaseData() {
     };
 }
 
+function renderListItems(listElement, items) {
+    if (!listElement) {
+        return;
+    }
+
+    listElement.innerHTML = '';
+
+    const values = Array.isArray(items) ? items : [];
+    const cleaned = values.filter((item) => item !== null && item !== undefined && String(item).trim() !== '');
+
+    if (cleaned.length === 0) {
+        listElement.closest('[id$="Wrap"]')?.setAttribute('style', 'display: none;');
+        return;
+    }
+
+    cleaned.forEach((item) => {
+        const listItem = document.createElement('li');
+        listItem.textContent = String(item);
+        listElement.appendChild(listItem);
+    });
+
+    listElement.closest('[id$="Wrap"]')?.removeAttribute('style');
+}
+
+function renderResult(result) {
+    if (!result || typeof result !== 'object') {
+        return;
+    }
+
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSummary = document.getElementById('resultSummary');
+    const resultIssues = document.getElementById('resultIssues');
+    const resultEvidence = document.getElementById('resultEvidence');
+    const resultNextSteps = document.getElementById('resultNextSteps');
+    const resultSources = document.getElementById('resultSources');
+    const resultRiskLevel = document.getElementById('resultRiskLevel');
+
+    if (resultTitle) {
+        resultTitle.textContent = 'Kết quả kiểm tra';
+    }
+
+    if (resultSummary) {
+        const summaryText = typeof result.summary === 'string' ? result.summary.trim() : '';
+        if (summaryText) {
+            resultSummary.textContent = summaryText;
+            resultSummary.style.display = '';
+        } else {
+            resultSummary.textContent = '';
+            resultSummary.style.display = 'none';
+        }
+    }
+
+    if (resultRiskLevel) {
+        const riskLevel = result.risk_level;
+        const riskText = typeof riskLevel === 'string' && riskLevel.trim() ? riskLevel.trim() : '';
+        if (riskText) {
+            resultRiskLevel.textContent = '● Mức độ cần chú ý: ' + riskText;
+            resultRiskLevel.style.display = '';
+        } else {
+            resultRiskLevel.textContent = '';
+            resultRiskLevel.style.display = 'none';
+        }
+    }
+
+    const issues = Array.isArray(result.issues) ? result.issues : [];
+    const evidence = Array.isArray(result.evidence) ? result.evidence : [];
+    const nextSteps = Array.isArray(result.next_steps) ? result.next_steps : [];
+    const sources = Array.isArray(result.sources) ? result.sources : [];
+
+    renderListItems(resultIssues, issues);
+    renderListItems(resultEvidence, evidence);
+    renderListItems(resultNextSteps, nextSteps);
+
+    const issueWrap = document.getElementById('resultIssuesWrap');
+    const evidenceWrap = document.getElementById('resultEvidenceWrap');
+    const nextStepsWrap = document.getElementById('resultNextStepsWrap');
+
+    if (issueWrap) {
+        issueWrap.style.display = resultIssues && resultIssues.children.length ? '' : 'none';
+    }
+    if (evidenceWrap) {
+        evidenceWrap.style.display = resultEvidence && resultEvidence.children.length ? '' : 'none';
+    }
+    if (nextStepsWrap) {
+        nextStepsWrap.style.display = resultNextSteps && resultNextSteps.children.length ? '' : 'none';
+    }
+
+    if (resultSources) {
+        const sourceText = sources.filter((item) => item !== null && item !== undefined && String(item).trim() !== '').join('; ');
+        if (sourceText) {
+            resultSources.textContent = 'Nguồn: ' + sourceText;
+            resultSources.style.display = '';
+        } else {
+            resultSources.textContent = '';
+            resultSources.style.display = 'none';
+        }
+    }
+}
+
 if (documentsAvailableField && typeof documentsAvailableField.addEventListener === 'function') {
     documentsAvailableField.addEventListener('change', updateCasualDocumentVisibility);
 }
@@ -120,6 +219,7 @@ document.getElementById('continue').addEventListener('click', async () => {
 
         console.log("Analysis result:", result);
 
+        renderResult(result);
         questionView.style.display = 'none';
         resultView.style.display = 'block';
 

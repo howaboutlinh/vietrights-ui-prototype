@@ -216,34 +216,27 @@
                         id="continue" type="button">Tiếp tục&nbsp; →</button></div>
             </section>
 
-            <section class="result-view" id="result-view" aria-live="polite">
+            <section class="result-view" id="result-view" aria-live="polite" style="display: none;">
                 <p class="eyebrow">Hướng dẫn dành cho bạn</p>
-                <h1>Có hai vấn đề bạn nên kiểm tra thêm.</h1>
-                <div class="result-tag">● Mức độ cần chú ý: Trung bình</div>
+                <h1 id="resultTitle">Kết quả kiểm tra</h1>
+                <div class="result-tag" id="resultRiskLevel" style="display: none;">● Mức độ cần chú ý:</div>
                 <div class="result-card">
-                    <h3>Thông tin bạn đã nhập</h3>
-                    <p>Dựa trên các câu trả lời trong mẫu này, hệ thống sẽ đánh giá các vấn đề có liên quan đến lương, giờ làm và tài liệu lao động.
-                    </p>
+                    <p id="resultSummary" style="display: none;"></p>
                     <div class="result-grid">
-                        <div>
-                            <h4>Bằng chứng nên giữ</h4>
-                            <ul>
-                                <li>Roster và số giờ đã làm</li>
-                                <li>Tin nhắn với quản lý</li>
-                                <li>Bank record hoặc ghi chú tiền mặt</li>
-                            </ul>
+                        <div id="resultIssuesWrap" style="display: none;">
+                            <h4>Vấn đề cần xem xét</h4>
+                            <ul id="resultIssues"></ul>
                         </div>
-                        <div>
+                        <div id="resultEvidenceWrap" style="display: none;">
+                            <h4>Bằng chứng nên giữ</h4>
+                            <ul id="resultEvidence"></ul>
+                        </div>
+                        <div id="resultNextStepsWrap" style="display: none;">
                             <h4>Việc nên làm tiếp</h4>
-                            <ul>
-                                <li>Kiểm tra mức lương áp dụng</li>
-                                <li>Yêu cầu payslip bằng văn bản</li>
-                                <li>Liên hệ Fair Work hoặc RMWC</li>
-                            </ul>
+                            <ul id="resultNextSteps"></ul>
                         </div>
                     </div>
-                    <p class="source-note" id="sources">Nguồn: Fair Work Ombudsman. Đây là thông tin chung, không phải
-                        tư vấn pháp lý.</p>
+                    <p class="source-note" id="resultSources" style="display: none;"></p>
                 </div>
                 <div class="actions"><button class="secondary" id="edit" type="button">← Sửa câu trả lời</button><button
                         class="primary" type="button">Xem nguồn chính thức&nbsp; →</button></div>
