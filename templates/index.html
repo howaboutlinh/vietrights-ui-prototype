@@ -80,6 +80,10 @@
 
                 <div class="field-list">
                     <div class="field-group">
+                        <label class="field-label" for="workplace">Nơi làm việc / ngành</label>
+                        <input class="field-input" id="workplace" type="text" placeholder="Ví dụ: nhà hàng, kho, văn phòng...">
+                    </div>
+                    <div class="field-group">
                         <label class="field-label" for="hourlyPay">Mức lương theo giờ</label>
                         <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="Nhập số tiền / giờ">
                     </div>
@@ -113,8 +117,8 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="hoursWorked">Số giờ làm mỗi tuần</label>
-                        <input class="field-input" id="hoursWorked" type="number" min="0" step="1" placeholder="Ví dụ: 35">
+                        <label class="field-label" for="hoursWorkedPerWeek">Số giờ làm mỗi tuần</label>
+                        <input class="field-input" id="hoursWorkedPerWeek" type="number" min="0" step="1" placeholder="Ví dụ: 35">
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="overtime">Bạn có làm thêm giờ không?</label>
@@ -150,9 +154,8 @@
                 <h1>Có hai vấn đề bạn nên kiểm tra thêm.</h1>
                 <div class="result-tag">● Mức độ cần chú ý: Trung bình</div>
                 <div class="result-card">
-                    <h3>Có thể liên quan đến thiếu lương và payslip</h3>
-                    <p>Mức lương $18/giờ có thể thấp hơn mức áp dụng, đặc biệt nếu bạn làm vào cuối tuần hoặc ngày lễ.
-                        Chủ lao động cũng thường phải cung cấp payslip trong vòng một ngày làm việc sau ngày trả lương.
+                    <h3>Thông tin bạn đã nhập</h3>
+                    <p>Dựa trên các câu trả lời trong mẫu này, hệ thống sẽ đánh giá các vấn đề có liên quan đến lương, giờ làm và tài liệu lao động.
                     </p>
                     <div class="result-grid">
                         <div>
@@ -188,11 +191,11 @@
             <div class="summary">
                 <div class="summary-item done">
                     <div class="dot">✓</div>
-                    <div class="summary-copy"><strong>Vấn đề chính</strong><span>Lương và payslip</span></div>
+                    <div class="summary-copy"><strong>Vấn đề chính</strong><span>Chưa nhập</span></div>
                 </div>
                 <div class="summary-item done">
                     <div class="dot">✓</div>
-                    <div class="summary-copy"><strong>Thông tin công việc</strong><span>Nhà hàng · casual</span></div>
+                    <div class="summary-copy"><strong>Thông tin công việc</strong><span>Chưa nhập</span></div>
                 </div>
                 <div class="summary-item current">
                     <div class="dot">3</div>

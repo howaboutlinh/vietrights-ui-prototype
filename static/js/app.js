@@ -4,48 +4,35 @@ const questionView = document.getElementById('question-view');
 const resultView = document.getElementById('result-view');
 
 function collectCaseData() {
-    const summaryEntries = [...document.querySelectorAll('.summary-item .summary-copy')].reduce((acc, item) => {
-        const label = item.querySelector('strong')?.textContent?.trim();
-        const value = item.querySelector('span')?.textContent?.trim();
+    const getTextValue = (id) => {
+        const field = document.getElementById(id);
+        if (!field || field.value === undefined || field.value === null) return null;
+        const value = field.value.trim();
+        return value !== '' ? value : null;
+    };
 
-        if (label && value) {
-            acc[label] = value;
-        }
-
-        return acc;
-    }, {});
+    const getNumberValue = (id) => {
+        const value = getTextValue(id);
+        if (value === null) return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    };
 
     const selectedWorkTimes = [...document.querySelectorAll('.choice[aria-pressed="true"]')]
         .map((button) => button.querySelector('strong')?.textContent?.trim())
         .filter(Boolean);
 
-    const workInfo = (summaryEntries['Thông tin công việc'] || '').split('·').map((item) => item.trim()).filter(Boolean);
-    const riskLevel = document.querySelector('.result-tag')?.textContent?.replace(/^●\s*Mức độ cần chú ý:\s*/i, '').trim() || null;
-
-    const getTextFieldValue = (id) => {
-        const field = document.getElementById(id);
-        if (!field) return null;
-        const value = field.value?.trim();
-        return value ? value : null;
-    };
-
-    const issue = summaryEntries['Vấn đề chính'] || null;
-    const workplace = workInfo[0] || null;
-    const employmentType = getTextFieldValue('employmentType') || workInfo[1] || null;
-
     return {
-        issue,
-        workplace,
-        hourlyPay: getTextFieldValue('hourlyPay'),
-        employmentType,
-        receivesPayslip: getTextFieldValue('receivesPayslip'),
-        paidCash: getTextFieldValue('paidCash'),
-        hoursWorked: getTextFieldValue('hoursWorked'),
-        overtime: getTextFieldValue('overtime'),
-        visaThreat: getTextFieldValue('visaThreat'),
-        description: getTextFieldValue('description'),
+        workplace: getTextValue('workplace'),
+        employmentType: getTextValue('employmentType'),
+        hourlyPay: getNumberValue('hourlyPay'),
+        hoursWorkedPerWeek: getNumberValue('hoursWorkedPerWeek'),
+        receivesPayslip: getTextValue('receivesPayslip'),
+        paidCash: getTextValue('paidCash'),
+        overtime: getTextValue('overtime'),
+        visaThreat: getTextValue('visaThreat'),
         workTime: selectedWorkTimes,
-        riskLevel
+        description: getTextValue('description')
     };
 }
 
