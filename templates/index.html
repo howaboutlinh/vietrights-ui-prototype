@@ -88,14 +88,36 @@
                         <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="Nhập số tiền / giờ">
                     </div>
                     <div class="field-group">
-                        <label class="field-label" for="employmentType">Loại hình việc làm</label>
-                        <select class="field-input" id="employmentType">
+                        <label class="field-label" for="workPattern">Bạn làm việc theo kiểu nào?</label>
+                        <select class="field-input" id="workPattern">
                             <option value="">Chọn</option>
-                            <option value="casual">Casual</option>
-                            <option value="part-time">Part-time</option>
-                            <option value="full-time">Full-time</option>
-                            <option value="contract">Contract</option>
-                            <option value="other">Khác</option>
+                            <option value="regular_hours">Giờ làm khá cố định mỗi tuần</option>
+                            <option value="variable_hours">Số giờ/ca làm thay đổi theo tuần</option>
+                            <option value="on_call">Tôi chỉ được gọi khi có ca</option>
+                            <option value="fixed_term">Hợp đồng của tôi có ngày kết thúc</option>
+                            <option value="unknown">Tôi không chắc</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="hoursPerWeek">Số giờ làm mỗi tuần</label>
+                        <input class="field-input" id="hoursPerWeek" type="number" min="0" step="1" placeholder="Ví dụ: 25">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="paidLeave">Bạn có nhận nghỉ phép có lương hoặc nghỉ ốm có lương không?</label>
+                        <select class="field-input" id="paidLeave">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="unknown">Không biết</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="casualShownOnDocuments">Trong hợp đồng hoặc payslip có ghi "casual" không?</label>
+                        <select class="field-input" id="casualShownOnDocuments">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="unknown">Không biết</option>
                         </select>
                     </div>
                     <div class="field-group">
@@ -115,10 +137,6 @@
                             <option value="no">Không</option>
                             <option value="not_sure">Không chắc</option>
                         </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label" for="hoursWorkedPerWeek">Số giờ làm mỗi tuần</label>
-                        <input class="field-input" id="hoursWorkedPerWeek" type="number" min="0" step="1" placeholder="Ví dụ: 35">
                     </div>
                     <div class="field-group">
                         <label class="field-label" for="overtime">Bạn có làm thêm giờ không?</label>

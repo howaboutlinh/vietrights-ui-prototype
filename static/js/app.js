@@ -22,17 +22,27 @@ function collectCaseData() {
         .map((button) => button.querySelector('strong')?.textContent?.trim())
         .filter(Boolean);
 
+    const explicitEmploymentType = getTextValue('employmentType');
+    const workPattern = getTextValue('workPattern') || 'unknown';
+    const paidLeaveValue = getTextValue('paidLeave');
+    const casualValue = getTextValue('casualShownOnDocuments');
+
     return {
         workplace: getTextValue('workplace'),
-        employmentType: getTextValue('employmentType'),
+        employmentType: explicitEmploymentType || 'unknown',
         hourlyPay: getNumberValue('hourlyPay'),
-        hoursWorkedPerWeek: getNumberValue('hoursWorkedPerWeek'),
         receivesPayslip: getTextValue('receivesPayslip'),
         paidCash: getTextValue('paidCash'),
         overtime: getTextValue('overtime'),
         visaThreat: getTextValue('visaThreat'),
         workTime: selectedWorkTimes,
-        description: getTextValue('description')
+        description: getTextValue('description'),
+        employmentPattern: {
+            workPattern,
+            hoursPerWeek: getNumberValue('hoursPerWeek'),
+            paidLeave: paidLeaveValue === 'yes' ? true : paidLeaveValue === 'no' ? false : null,
+            casualShownOnDocuments: casualValue || 'unknown'
+        }
     };
 }
 
