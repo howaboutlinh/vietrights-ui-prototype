@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="VietRights — công cụ hướng dẫn quyền lao động dành cho người Việt tại Úc.">
+    <title>VietRights | Workplace Rights Check</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <div class="brand" aria-label="VietRights home">
+                <div class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M12 20c-4.4-2.7-6.7-5.5-6.7-8.5A3.7 3.7 0 0 1 12 9.3a3.7 3.7 0 0 1 6.7 2.2c0 3-2.3 5.8-6.7 8.5Z"
+                            stroke="currentColor" stroke-width="1.7" />
+                        <path d="M12 9.3V4.2M8.7 7.2 12 9.3l3.3-2.1" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" />
+                    </svg>
+                </div>
+                <div class="brand-name">Viet<span>Rights</span></div>
+            </div>
+            <nav class="header-actions" aria-label="Main navigation">
+                <a class="header-link" href="#how-it-works">Cách hoạt động</a>
+                <a class="header-link" href="#sources">Nguồn đáng tin cậy</a>
+                <button class="language" type="button" aria-label="Change language">VI&nbsp; / &nbsp;EN</button>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page">
+        <main class="workspace">
+            <section id="question-view">
+                <p class="eyebrow">Kiểm tra quyền tại nơi làm việc</p>
+                <h1>Hiểu tình huống của bạn, từng bước một.</h1>
+                <p class="intro">Không cần biết thuật ngữ pháp lý. VietRights sẽ hỏi những thông tin cần thiết và đưa ra
+                    hướng dẫn rõ ràng dựa trên nguồn chính thức.</p>
+
+                <div class="privacy-note">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8" />
+                        <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8" />
+                    </svg>
+                    <span>Để bảo vệ quyền riêng tư, không nhập số hộ chiếu, visa, TFN hoặc thông tin ngân hàng.</span>
+                </div>
+
+                <div class="progress-meta"><strong>Đang làm rõ tình huống</strong><span>Đã thu thập 3/5 nhóm thông
+                        tin</span></div>
+                <div class="progress" role="progressbar" aria-label="Tiến độ" aria-valuemin="0" aria-valuemax="100"
+                    aria-valuenow="54"><span></span></div>
+
+                <p class="question-label">Thời gian làm việc</p>
+                <h2>Bạn thường làm việc vào thời điểm nào?</h2>
+                <p class="question-help">Có thể chọn nhiều đáp án.</p>
+
+                <div class="choices" id="choices">
+                    <button class="choice" type="button" aria-pressed="false"><span
+                            class="check">✓</span><span><strong>Ngày thường</strong><small>Thứ Hai đến Thứ
+                                Sáu</small></span></button>
+                    <button class="choice" type="button" aria-pressed="false"><span
+                            class="check">✓</span><span><strong>Buổi tối hoặc ban đêm</strong><small>Ca làm ngoài giờ
+                                ban ngày thông thường</small></span></button>
+                    <button class="choice" type="button" aria-pressed="true"><span
+                            class="check">✓</span><span><strong>Cuối tuần</strong><small>Thứ Bảy hoặc Chủ
+                                Nhật</small></span></button>
+                    <button class="choice" type="button" aria-pressed="false"><span
+                            class="check">✓</span><span><strong>Ngày lễ</strong><small>Public holiday tại bang hoặc vùng
+                                của bạn</small></span></button>
+                    <button class="choice" type="button" aria-pressed="false"><span
+                            class="check">✓</span><span><strong>Lịch thay đổi thường xuyên</strong><small>Không có lịch
+                                làm cố định mỗi tuần</small></span></button>
+                    <button class="choice" type="button" aria-pressed="false"><span
+                            class="check">✓</span><span><strong>Tôi không chắc</strong><small>Bạn vẫn có thể tiếp tục
+                                kiểm tra</small></span></button>
+                </div>
+
+                <div class="field-list">
+                    <div class="field-group">
+                        <label class="field-label" for="hourlyPay">Mức lương theo giờ</label>
+                        <input class="field-input" id="hourlyPay" type="number" min="0" step="0.01" placeholder="Nhập số tiền / giờ">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="employmentType">Loại hình việc làm</label>
+                        <select class="field-input" id="employmentType">
+                            <option value="">Chọn</option>
+                            <option value="casual">Casual</option>
+                            <option value="part-time">Part-time</option>
+                            <option value="full-time">Full-time</option>
+                            <option value="contract">Contract</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="receivesPayslip">Bạn có nhận payslip không?</label>
+                        <select class="field-input" id="receivesPayslip">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="not_sure">Không chắc</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="paidCash">Bạn có nhận lương bằng tiền mặt không?</label>
+                        <select class="field-input" id="paidCash">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="not_sure">Không chắc</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="hoursWorked">Số giờ làm mỗi tuần</label>
+                        <input class="field-input" id="hoursWorked" type="number" min="0" step="1" placeholder="Ví dụ: 35">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="overtime">Bạn có làm thêm giờ không?</label>
+                        <select class="field-input" id="overtime">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="sometimes">Thỉnh thoảng</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="visaThreat">Bạn có bị đe dọa về visa / thị thực không?</label>
+                        <select class="field-input" id="visaThreat">
+                            <option value="">Chọn</option>
+                            <option value="yes">Có</option>
+                            <option value="no">Không</option>
+                            <option value="not_sure">Không chắc</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="description">Mô tả ngắn về tình huống</label>
+                        <textarea class="field-input field-textarea" id="description" rows="4" placeholder="Mô tả tình huống của bạn..."></textarea>
+                    </div>
+                </div>
+
+                <p class="error" id="error" role="alert">Vui lòng chọn ít nhất một thời điểm để tiếp tục.</p>
+                <div class="actions"><button class="secondary" type="button">← Quay lại</button><button class="primary"
+                        id="continue" type="button">Tiếp tục&nbsp; →</button></div>
+            </section>
+
+            <section class="result-view" id="result-view" aria-live="polite">
+                <p class="eyebrow">Hướng dẫn dành cho bạn</p>
+                <h1>Có hai vấn đề bạn nên kiểm tra thêm.</h1>
+                <div class="result-tag">● Mức độ cần chú ý: Trung bình</div>
+                <div class="result-card">
+                    <h3>Có thể liên quan đến thiếu lương và payslip</h3>
+                    <p>Mức lương $18/giờ có thể thấp hơn mức áp dụng, đặc biệt nếu bạn làm vào cuối tuần hoặc ngày lễ.
+                        Chủ lao động cũng thường phải cung cấp payslip trong vòng một ngày làm việc sau ngày trả lương.
+                    </p>
+                    <div class="result-grid">
+                        <div>
+                            <h4>Bằng chứng nên giữ</h4>
+                            <ul>
+                                <li>Roster và số giờ đã làm</li>
+                                <li>Tin nhắn với quản lý</li>
+                                <li>Bank record hoặc ghi chú tiền mặt</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Việc nên làm tiếp</h4>
+                            <ul>
+                                <li>Kiểm tra mức lương áp dụng</li>
+                                <li>Yêu cầu payslip bằng văn bản</li>
+                                <li>Liên hệ Fair Work hoặc RMWC</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <p class="source-note" id="sources">Nguồn: Fair Work Ombudsman. Đây là thông tin chung, không phải
+                        tư vấn pháp lý.</p>
+                </div>
+                <div class="actions"><button class="secondary" id="edit" type="button">← Sửa câu trả lời</button><button
+                        class="primary" type="button">Xem nguồn chính thức&nbsp; →</button></div>
+            </section>
+        </main>
+
+        <aside class="case-panel" id="how-it-works" aria-label="Tóm tắt tình huống">
+            <div class="case-panel-top">
+                <h3>Hồ sơ tình huống</h3>
+                <p class="case-panel-intro">VietRights chỉ hỏi những thông tin cần thiết để hiểu vấn đề của bạn.</p>
+            </div>
+            <div class="summary">
+                <div class="summary-item done">
+                    <div class="dot">✓</div>
+                    <div class="summary-copy"><strong>Vấn đề chính</strong><span>Lương và payslip</span></div>
+                </div>
+                <div class="summary-item done">
+                    <div class="dot">✓</div>
+                    <div class="summary-copy"><strong>Thông tin công việc</strong><span>Nhà hàng · casual</span></div>
+                </div>
+                <div class="summary-item current">
+                    <div class="dot">3</div>
+                    <div class="summary-copy"><strong>Thời gian làm việc</strong><span>Đang trả lời</span></div>
+                </div>
+                <div class="summary-item">
+                    <div class="dot">4</div>
+                    <div class="summary-copy"><strong>Mức độ rủi ro</strong><span>Chưa đánh giá</span></div>
+                </div>
+                <div class="summary-item">
+                    <div class="dot">5</div>
+                    <div class="summary-copy"><strong>Hướng dẫn</strong><span>Nguồn và bước tiếp theo</span></div>
+                </div>
+            </div>
+            <div class="panel-footer">🔒 Câu trả lời trong bản prototype này không được lưu lại.</div>
+        </aside>
+    </div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+</body>
+
+</html>
