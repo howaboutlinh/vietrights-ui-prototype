@@ -428,28 +428,28 @@ function collectCaseData() {
 
   const mainIssues = getSelectedIssues();
   const mainIssueOther = mainIssues.includes('other') ? getTextValue('main-issue-other') : null;
-  const workplace = getTextValue('workplace') || 'unknown';
+  const workplace = getTextValue('workplace');
   const workplaceOther = workplace === 'other' ? getTextValue('workplace-other') : null;
-  const workPattern = getTextValue('work-pattern') || 'unknown';
+  const workPattern = getTextValue('work-pattern');
   const paidLeave = getTextValue('paid-leave');
-  const documents = getTextValue('documents') || 'unknown';
+  const documents = getTextValue('documents');
   const employmentDocType = ['both', 'no_contract', 'no_payslip'].includes(documents)
     ? (getTextValue('employment-doc-type') || 'unknown')
     : 'unknown';
-  const payBasis = getTextValue('pay-basis') || 'unknown';
+  const payBasis = getTextValue('pay-basis');
   const payAmount = getNumberValue('pay-amount');
   const pieceworkDescription = getTextValue('piecework-description');
-  const payslipStatus = getTextValue('payslip-status') || 'unknown';
-  const paymentMethod = getTextValue('payment-method') || 'unknown';
+  const payslipStatus = getTextValue('payslip-status');
+  const paymentMethod = getTextValue('payment-method');
   const hoursUnknown = document.getElementById('hours-unknown')?.checked || false;
   const hoursPerWeek = hoursUnknown ? null : getNumberValue('hours-per-week');
   const hoursPerShift = getNumberValue('hours-per-shift');
-  const overtime = getTextValue('overtime') || 'unknown';
-  const breaks = getTextValue('breaks') || 'unknown';
-  const visaThreat = getTextValue('visa-threat') || 'unknown';
-  const immediateDanger = getTextValue('immediate-danger') || 'unknown';
-  const safetyConcern = getTextValue('safety-concern') || 'unknown';
-  const coercion = getTextValue('coercion') || 'unknown';
+  const overtime = getTextValue('overtime');
+  const breaks = getTextValue('breaks');
+  const visaThreat = getTextValue('visa-threat');
+  const immediateDanger = getTextValue('immediate-danger');
+  const safetyConcern = getTextValue('safety-concern');
+  const coercion = getTextValue('coercion');
 
   return {
     mainIssues,

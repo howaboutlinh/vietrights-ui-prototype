@@ -1,4 +1,5 @@
 import services.llm
+import pytest
 from app import app
 from services.config import ConfigurationError
 from types import SimpleNamespace
@@ -18,6 +19,29 @@ def test_frontend_response_does_not_expose_secrets(monkeypatch):
     monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
     serialized = str(app.test_client().post("/analyze", json=SCENARIO).get_json()).lower()
     assert "service_role" not in serialized and "database_url" not in serialized and "embedding" not in serialized
+
+@pytest.mark.parametrize("field", [
+    "workplace", "workPattern", "paidLeave", "documentAvailability",
+    "employmentTypeOnDocuments", "payslipStatus", "paymentMethod",
+    "overtime", "breaks", "visaThreat", "immediateDanger", "safetyConcern", "coercion",
+])
+def test_api_rejects_empty_dropdown_value(monkeypatch, field):
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
+    response = app.test_client().post("/analyze", json={**SCENARIO, field: ""})
+    assert response.status_code == 400
+    assert response.get_json()["error_code"] == "invalid_input"
+
+def test_api_rejects_empty_pay_basis_value(monkeypatch):
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
+    response = app.test_client().post("/analyze", json={**SCENARIO, "pay": {"payBasis": ""}})
+    assert response.status_code == 400
+    assert response.get_json()["error_code"] == "invalid_input"
+
+def test_api_rejects_null_dropdown_value_from_client_payload(monkeypatch):
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
+    response = app.test_client().post("/analyze", json={**SCENARIO, "paidLeave": None})
+    assert response.status_code == 400
+    assert response.get_json()["error_code"] == "invalid_input"
 
 def test_api_handles_missing_rag_configuration(monkeypatch):
     monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: (_ for _ in ()).throw(ConfigurationError("missing secret")))

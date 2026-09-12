@@ -22,6 +22,11 @@ PROMPTS_FILE_PATH = Path(__file__).resolve().parents[1] / "data" / "locales" / "
 DEFAULT_TIMEOUT_MS = int(os.getenv("GEMINI_REQUEST_TIMEOUT_MS", "25000"))
 SUPPORTED_WORKPLACE_ISSUES = {"pay", "payslip", "hours", "visa", "safety", "harassment", "other"}
 SUPPORTED_PAY_BASES = {"hourly", "per_shift", "daily", "weekly", "fortnightly", "monthly", "piecework", "unknown"}
+CHOICE_FIELDS = (
+    "workplace", "workPattern", "paidLeave", "documentAvailability",
+    "employmentTypeOnDocuments", "payslipStatus", "paymentMethod",
+    "overtime", "breaks", "visaThreat", "immediateDanger", "safetyConcern", "coercion",
+)
 
 
 class LLMBaseError(Exception):
@@ -228,12 +233,17 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         if not other_description:
             raise ValueError("Description for 'other' issue must be provided when 'other' is selected.")
 
+    for field in CHOICE_FIELDS:
+        value = case_data.get(field)
+        if field in case_data and (value is None or (isinstance(value, str) and not value.strip())):
+            raise ValueError(f"'{field}' cannot be empty.")
+
     pay_info = case_data.get("pay")
     if pay_info is not None:
         if not isinstance(pay_info, dict):
             raise ValueError("'pay' field must be a dictionary if provided.")
         pay_basis = pay_info.get("payBasis")
-        if pay_basis is not None and (not isinstance(pay_basis, str) or pay_basis.strip() not in SUPPORTED_PAY_BASES):
+        if "payBasis" in pay_info and (not isinstance(pay_basis, str) or not pay_basis.strip() or pay_basis.strip() not in SUPPORTED_PAY_BASES):
             raise ValueError(f"Invalid pay basis value: {pay_basis}")
 
     language = str(case_data.get("language") or "vi").lower()
