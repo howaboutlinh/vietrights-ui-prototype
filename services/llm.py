@@ -10,6 +10,8 @@ from google import genai
 from google.genai import errors, types
 
 from services.retrieval import retrieve_context
+from services.retry import call_with_retry, http_options
+import httpx
 
 load_dotenv()
 
@@ -246,6 +248,10 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",):
             raise LLMQuotaError("API rate limit or quota exceeded. Please try again later.") from None
         raise LLMServiceError("An error occurred while researching official sources.") from None
+    except (TimeoutError, httpx.TimeoutException):
+        raise LLMTimeoutError() from None
+    except httpx.TransportError:
+        raise LLMServiceError() from None
     if not retrieved_context:
         message = (
             "Chưa tìm thấy thông tin chính thức đủ phù hợp để trả lời tình huống này. "
@@ -293,7 +299,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     model_name = os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", GEMINI_MODEL))
 
     try:
-        response = client.models.generate_content(
+        response = call_with_retry(lambda timeout_ms: client.models.generate_content(
             model=model_name,
             contents=user_prompt,
             config=types.GenerateContentConfig(
@@ -301,11 +307,11 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
                 temperature=0.3,
                 response_mime_type="application/json",
                 response_schema=_response_schema(),
-                http_options=types.HttpOptions(timeout=max(DEFAULT_TIMEOUT_MS, 40000)),
+                http_options=http_options(timeout_ms),
             ),
-        )
+        ), label='answer')
     except errors.APIError as exc:
-        logger.warning("Gemini API error status=%s code=%s: %s", exc.status, exc.code, exc.message)
+        logger.warning("Gemini API error status=%s code=%s", exc.status, exc.code)
         error_msg = str(exc).lower()
         if exc.code in (401, 403) or exc.status in ("UNAUTHENTICATED", "PERMISSION_DENIED") or "unauthenticated" in error_msg:
             raise LLMAuthenticationError("Authentication failed. Please verify the configured GEMINI_API_KEY.") from None
@@ -324,7 +330,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         exc_str = str(exc).lower()
         if "timeout" in exc_str:
             raise LLMTimeoutError("The AI model request timed out. Please try again.") from None
-        logger.error("Unexpected error during Gemini content generation: %s", exc, exc_info=True)
+        logger.error("Unexpected Gemini error type=%s", type(exc).__name__)
         raise LLMServiceError("An unexpected error occurred while communicating with the AI service.") from None
 
     content = getattr(response, "text", None)

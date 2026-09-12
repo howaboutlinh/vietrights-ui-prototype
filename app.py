@@ -5,6 +5,7 @@ from flask import Flask, current_app, jsonify, render_template, request
 from services.config import ConfigurationError, Settings, sqlalchemy_database_url
 from services.database import db
 from services.llm import LLMBaseError, analyze_case
+from services.retry import request_budget
 
 
 def home():
@@ -18,7 +19,8 @@ def analyze():
     if not isinstance(data, dict):
         return jsonify({"status": "error", "error_code": "invalid_payload", "error": "Invalid JSON payload."}), 400
     try:
-        result = analyze_case(data)
+        with request_budget():
+            result = analyze_case(data)
         return jsonify({"status": "success", **result})
     except LLMBaseError as exc:
         current_app.logger.warning("Controlled LLM error code=%s", exc.error_code)

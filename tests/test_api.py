@@ -38,10 +38,20 @@ def test_api_response_contains_grounded_answer_and_sources(monkeypatch):
         "evidence": ["Giữ lại lịch làm việc [1]."], "next_steps": ["Liên hệ Fair Work [1]."],
         "clarification_questions": [], "risk_level": "medium", "sources": [],
     }
-    models = SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(model_result, ensure_ascii=False)))
+    from google.genai import errors
+    from services import retry
+    monkeypatch.setattr(retry.time, 'sleep', lambda _: None)
+    attempts = []
+    def generate(**kwargs):
+        attempts.append(kwargs)
+        if len(attempts) < 3:
+            raise errors.APIError(503, {'error': {'code': 503, 'message': 'temporary overload'}})
+        return SimpleNamespace(text=json.dumps(model_result, ensure_ascii=False))
+    models = SimpleNamespace(generate_content=generate)
     monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(models=models))
     payload = app.test_client().post("/analyze", json=SCENARIO).get_json()
     assert payload["answer"].endswith("[1].")
     assert payload["sources"][0]["number"] == 1
     assert payload["sources"][0]["section"] == "Pay slips"
     assert payload["retrieval"]["result_count"] == 1
+    assert len(attempts) == 3

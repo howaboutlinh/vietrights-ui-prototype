@@ -1,18 +1,18 @@
 """Gemini embedding client with retry and dimensionality guarantees."""
 from __future__ import annotations
 import math
-import time
 from typing import Any, Sequence
 from google import genai
 from google.genai import errors, types
 from services.config import Settings
+from services.retry import call_with_retry, http_options
 
 class EmbeddingError(RuntimeError):
     """Raised when Gemini cannot produce a valid embedding."""
 
 class EmbeddingService:
     """Generate normalized document/query vectors in one embedding space."""
-    def __init__(self, settings: Settings | None = None, client: Any | None = None, max_retries: int = 3):
+    def __init__(self, settings: Settings | None = None, client: Any | None = None, max_retries: int = 6):
         self.settings = settings or Settings.from_env()
         self.settings.validate(["gemini_api_key"])
         self.client = client or genai.Client(api_key=self.settings.gemini_api_key, vertexai=False)
@@ -22,27 +22,21 @@ class EmbeddingService:
         values = [str(text).strip() for text in texts]
         if not values or any(not value for value in values):
             raise EmbeddingError("Embedding input must contain non-empty text.")
-        for attempt in range(self.max_retries):
-            try:
-                response = self.client.models.embed_content(
-                    model=self.settings.embedding_model, contents=values,
-                    config=types.EmbedContentConfig(task_type=task_type, output_dimensionality=self.settings.embedding_dimension),
-                )
-                vectors = [self._normalize(list(item.values)) for item in (getattr(response, "embeddings", None) or [])]
-                if len(vectors) != len(values) or any(len(vector) != self.settings.embedding_dimension for vector in vectors):
-                    raise EmbeddingError("Gemini returned an unexpected embedding count or dimension.")
-                return vectors
-            except EmbeddingError:
-                raise
-            except errors.APIError as exc:
-                if getattr(exc, "code", None) not in {408, 429, 500, 502, 503, 504} or attempt + 1 >= self.max_retries:
-                    raise EmbeddingError("Gemini embedding request failed.") from exc
-                time.sleep(2**attempt)
-            except Exception as exc:
-                if attempt + 1 >= self.max_retries:
-                    raise EmbeddingError("Gemini embedding request failed.") from exc
-                time.sleep(2**attempt)
-        raise EmbeddingError("Gemini embedding request failed.")
+        try:
+            response = call_with_retry(lambda timeout_ms: self.client.models.embed_content(
+                model=self.settings.embedding_model, contents=values,
+                config=types.EmbedContentConfig(task_type=task_type, output_dimensionality=self.settings.embedding_dimension, http_options=http_options(timeout_ms)),
+            ), label='embedding', max_attempts=self.max_retries)
+            vectors = [self._normalize(list(item.values)) for item in (getattr(response, "embeddings", None) or [])]
+            if len(vectors) != len(values) or any(len(vector) != self.settings.embedding_dimension for vector in vectors):
+                raise EmbeddingError("Gemini returned an unexpected embedding count or dimension.")
+            return vectors
+        except (errors.APIError, TimeoutError):
+            raise
+        except EmbeddingError:
+            raise
+        except Exception as exc:
+            raise EmbeddingError("Gemini embedding request failed.") from exc
 
     @staticmethod
     def _normalize(vector: list[float]) -> list[float]:

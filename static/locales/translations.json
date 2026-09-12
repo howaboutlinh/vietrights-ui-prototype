@@ -227,7 +227,14 @@
     },
     "error": {
       "title": "Chưa thể hoàn tất phân tích tình huống",
-      "timeout": "Yêu cầu vượt quá thời gian chờ (30 giây). Vui lòng kiểm tra kết nối mạng và thử lại.",
+      "timeout": "Phân tích mất quá nhiều thời gian. Vui lòng thử lại sau.",
+      "request_timeout": "Dịch vụ AI chưa phản hồi kịp sau các lần thử lại. Vui lòng thử lại sau.",
+      "quota_exceeded": "Dịch vụ AI đang đạt giới hạn sử dụng. Vui lòng thử lại sau khi hạn mức được khôi phục.",
+      "service_error": "Dịch vụ AI đang quá tải hoặc tạm thời gián đoạn. Hệ thống đã thử lại nhưng chưa thành công. Vui lòng thử lại sau.",
+      "service_unconfigured": "Dịch vụ phân tích chưa được cấu hình đầy đủ. Vui lòng liên hệ quản trị viên.",
+      "authentication_error": "Dịch vụ AI chưa thể xác thực. Vui lòng liên hệ quản trị viên.",
+      "model_not_found": "Mô hình AI hiện chưa khả dụng. Vui lòng liên hệ quản trị viên.",
+      "invalid_model_response": "Chưa nhận được câu trả lời hợp lệ có nguồn dẫn. Vui lòng thử lại.",
       "unexpected": "Đã có lỗi xảy ra trong quá trình phân tích tình huống.",
       "invalid_response": "Máy chủ trả về dữ liệu không hợp lệ.",
       "unable_to_analyze": "Không thể phân tích tình huống."
@@ -461,7 +468,14 @@
     },
     "error": {
       "title": "Analysis could not be completed",
-      "timeout": "Request timed out (30 seconds). Please check your internet connection and try again.",
+      "timeout": "Analysis took too long. Please try again later.",
+      "request_timeout": "The AI service did not respond in time after retries. Please try again later.",
+      "quota_exceeded": "The AI service has reached its usage limit. Please try again after the quota resets.",
+      "service_error": "The AI service is overloaded or temporarily unavailable. Automatic retries did not succeed. Please try again later.",
+      "service_unconfigured": "Analysis is not fully configured. Please contact the administrator.",
+      "authentication_error": "The AI service could not authenticate. Please contact the administrator.",
+      "model_not_found": "The configured AI model is unavailable. Please contact the administrator.",
+      "invalid_model_response": "A valid sourced answer could not be generated. Please try again.",
       "unexpected": "An unexpected error occurred while analyzing the case.",
       "invalid_response": "Server returned non-JSON response.",
       "unable_to_analyze": "Unable to analyze case."

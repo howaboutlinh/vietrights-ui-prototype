@@ -106,6 +106,10 @@ Tests mock Gemini, HTTP/PDF behavior, and Supabase, so they do not consume API c
 
 ## Render deployment
 
+Gemini research, embedding and answer calls retry transient HTTP 408/429/500/502/503/504 and transport failures up to six total attempts per call. Delays use exponential backoff (2, 4, 8, 16, 30 seconds plus jitter), honoring a longer provider retry delay. Authentication and invalid-request errors fail immediately. A shared 180-second AI request deadline bounds retries; a 70-second research budget still applies. Retries cannot restore exhausted quota.
+
+The checked-in `gunicorn.conf.py` is loaded by `gunicorn app:app` and configures one worker, four threads, and a 210-second worker timeout. The browser waits up to 200 seconds. No Render command edit is needed to load these defaults. Error codes are translated to the selected UI language.
+
 Create a Python Web Service and configure:
 
 - Build command: `pip install -r requirements.txt`

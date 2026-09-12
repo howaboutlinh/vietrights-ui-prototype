@@ -638,12 +638,11 @@ async function sendCaseToBackend(signal) {
   if (contentType.includes('application/json')) {
     responseData = await response.json();
   } else {
-    const rawText = await response.text();
-    throw new Error(rawText || t('error.invalid_response', 'Server returned non-JSON response.'));
+    throw new Error(t('error.invalid_response', 'Server returned non-JSON response.'));
   }
 
   if (!response.ok || responseData.status === 'error') {
-    const errorMsg = responseData?.error || t('error.unable_to_analyze', 'Unable to analyze case.');
+    const errorMsg = t(`error.${responseData?.error_code}`, t('error.unable_to_analyze', 'Unable to analyze case.'));
     throw new Error(errorMsg);
   }
 
@@ -670,7 +669,7 @@ async function runAnalysis() {
   if (backBtn) backBtn.disabled = true;
 
   analysisAbortController = new AbortController();
-  const timeoutMs = 120000;
+  const timeoutMs = 200000;
   const timeoutId = setTimeout(() => {
     analysisAbortController.abort();
   }, timeoutMs);

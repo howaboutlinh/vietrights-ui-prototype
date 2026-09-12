@@ -13,6 +13,7 @@ from google.genai import types
 from services.config import Settings
 from services.embedding_service import EmbeddingService
 from services.vector_store import SQLAlchemyVectorStore
+from services.retry import call_with_retry, http_options
 
 logger = logging.getLogger(__name__)
 MAX_TOOL_CALLS = 8
@@ -128,7 +129,10 @@ def retrieve_context(case_data: dict[str, Any], settings: Settings | None = None
 
     while calls_used < MAX_TOOL_CALLS and rounds_used < MAX_PLANNING_ROUNDS and time.monotonic() - started < MAX_AGENT_SECONDS:
         rounds_used += 1
-        response = chat.send_message(pending_message) if chat else client.models.generate_content(model=settings.chat_model, contents=contents, config=config)
+        def plan(timeout_ms):
+            attempt_config = config.model_copy(update={'http_options': http_options(timeout_ms)})
+            return chat.send_message(pending_message, config=attempt_config) if chat else client.models.generate_content(model=settings.chat_model, contents=contents, config=attempt_config)
+        response = call_with_retry(plan, label='research', deadline=started + MAX_AGENT_SECONDS)
         function_calls = list(getattr(response, "function_calls", None) or [])
         if not function_calls:
             break
