@@ -349,15 +349,16 @@
               <label for="pay-basis" data-i18n="step2_pay_basis_label">Bạn được trả lương theo cách nào?</label>
               <select id="pay-basis">
                 <option value="" disabled selected hidden data-i18n="opt_select">Chọn</option>
-                <option value="hourly" data-i18n="opt_pay_hourly">Theo giờ</option>
+                <option value="hourly" data-i18n="opt_pay_hourly">Theo giờ — Ví dụ: $26.44/giờ</option>
                 <option value="per_shift" data-i18n="opt_pay_per_shift">Theo ca</option>
-                <option value="daily" data-i18n="opt_pay_daily">Theo ngày</option>
-                <option value="weekly" data-i18n="opt_pay_weekly">Theo tuần</option>
-                <option value="fortnightly" data-i18n="opt_pay_fortnightly">Mỗi 2 tuần</option>
+                <option value="daily" data-i18n="opt_pay_daily">Theo ngày — Ví dụ: $200.94/ngày</option>
+                <option value="weekly" data-i18n="opt_pay_weekly">Theo tuần — Ví dụ: $1,004.90/tuần</option>
+                <option value="fortnightly" data-i18n="opt_pay_fortnightly">Theo hai tuần — Ví dụ: $2,009.80 mỗi hai tuần</option>
                 <option value="monthly" data-i18n="opt_pay_monthly">Theo tháng</option>
                 <option value="piecework" data-i18n="opt_pay_piecework">Theo sản phẩm / công việc</option>
                 <option value="unknown" data-i18n="opt_pay_unknown">Tôi không chắc</option>
               </select>
+              <p class="field-help" data-i18n="pay_frequency_note">Ví dụ dựa trên National Minimum Wage từ ngày 1/7/2026 và tuần làm việc 38 giờ. Mức lương thực tế có thể cao hơn tùy theo award, loại hợp đồng, độ tuổi, ca làm và penalty rates.</p>
             </div>
 
             <div class="form-group conditional" id="pay-amount-wrap" hidden>
