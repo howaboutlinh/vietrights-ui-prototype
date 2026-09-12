@@ -28,16 +28,25 @@ def test_questionnaire_scroll_respects_reduced_motion_and_clears_sources_hash():
     assert "scroll-margin-top: 100px;" in styles
 
 
-def test_pay_frequency_labels_and_notes_switch_between_languages():
+def test_pay_frequency_labels_and_dynamic_amount_placeholders_switch_between_languages():
     translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
 
-    assert translations["vi"]["opt_pay_hourly"] == "Theo giờ — Ví dụ: $26.44/giờ"
-    assert translations["vi"]["opt_pay_daily"] == "Theo ngày — Ví dụ: $200.94/ngày"
-    assert translations["vi"]["opt_pay_weekly"] == "Theo tuần — Ví dụ: $1,004.90/tuần"
-    assert translations["vi"]["opt_pay_fortnightly"] == "Theo hai tuần — Ví dụ: $2,009.80 mỗi hai tuần"
-    assert translations["en"]["opt_pay_hourly"] == "Hourly — Example: $26.44 per hour"
-    assert translations["en"]["opt_pay_daily"] == "Daily — Example: $200.94 per day"
-    assert translations["en"]["opt_pay_weekly"] == "Weekly — Example: $1,004.90 per week"
-    assert translations["en"]["opt_pay_fortnightly"] == "Fortnightly — Example: $2,009.80 per fortnight"
-    assert translations["vi"]["pay_frequency_note"]
-    assert translations["en"]["pay_frequency_note"]
+    assert [translations["vi"][key] for key in ("opt_pay_hourly", "opt_pay_daily", "opt_pay_weekly", "opt_pay_fortnightly")] == ["Theo giờ", "Theo ngày", "Theo tuần", "Theo hai tuần"]
+    assert [translations["en"][key] for key in ("opt_pay_hourly", "opt_pay_daily", "opt_pay_weekly", "opt_pay_fortnightly")] == ["Hourly", "Daily", "Weekly", "Fortnightly"]
+    assert [translations["vi"]["pay_labels"][key] for key in ("hourly", "per_shift", "daily", "weekly", "fortnightly")] == [
+        "Bạn được trả bao nhiêu mỗi giờ?", "Bạn được trả bao nhiêu mỗi ca?", "Bạn được trả bao nhiêu mỗi ngày?",
+        "Bạn được trả bao nhiêu mỗi tuần?", "Bạn được trả bao nhiêu mỗi hai tuần?"
+    ]
+    assert [translations["en"]["pay_labels"][key] for key in ("hourly", "per_shift", "daily", "weekly", "fortnightly")] == [
+        "How much are you paid per hour?", "How much are you paid per shift?", "How much are you paid per day?",
+        "How much are you paid per week?", "How much are you paid per fortnight?"
+    ]
+    assert translations["vi"]["pay_amount_placeholders"] == {
+        "hourly": "Ví dụ: 26.44", "per_shift": "Ví dụ: 211.52", "daily": "Ví dụ: 200.94", "weekly": "Ví dụ: 1004.90", "fortnightly": "Ví dụ: 2009.80"
+    }
+    assert translations["en"]["pay_amount_placeholders"] == {
+        "hourly": "Example: 26.44", "per_shift": "Example: 211.52", "daily": "Example: 200.94", "weekly": "Example: 1004.90", "fortnightly": "Example: 2009.80"
+    }
+    assert "pay_frequency_note" not in translations["vi"]
+    assert "pay_frequency_note" not in translations["en"]
+    assert "pay_amount_placeholders.${value}" in APP_JS.read_text(encoding="utf-8")

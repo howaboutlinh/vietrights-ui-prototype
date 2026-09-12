@@ -117,10 +117,13 @@ function updateConditionalFields() {
   if (payBasis && payAmountWrap && pieceworkWrap && payAmountLabel) {
     const value = payBasis.value;
     const labelKey = `pay_labels.${value}`;
+    const placeholderKey = `pay_amount_placeholders.${value}`;
     const dynamicLabel = t(labelKey, '');
+    const dynamicPlaceholder = t(placeholderKey, t('step2_pay_amount_placeholder', ''));
 
     if (value && dynamicLabel) {
       payAmountLabel.textContent = dynamicLabel;
+      if (payAmount) payAmount.placeholder = dynamicPlaceholder;
       payAmountWrap.hidden = false;
       pieceworkWrap.hidden = true;
       if (pieceworkDescription) pieceworkDescription.value = '';
