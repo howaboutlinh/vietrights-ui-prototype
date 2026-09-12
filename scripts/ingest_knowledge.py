@@ -14,7 +14,7 @@ from services.chunking import KnowledgeChunk, chunk_document
 from services.config import ConfigurationError, Settings, knowledge_sources
 from services.embedding_service import EmbeddingService
 from services.source_loader import SourceCrawler
-from services.vector_store import SupabaseVectorStore
+from services.vector_store import SQLAlchemyVectorStore
 
 logger = logging.getLogger("vietrights.ingest")
 
@@ -32,7 +32,7 @@ def run(source_number: int | None = None, dry_run: bool = False) -> dict[str, in
         sources = [sources[source_number - 1]]
     crawler = SourceCrawler(settings.request_timeout_seconds, settings.crawl_max_depth, settings.crawl_max_pages)
     embedder = None if dry_run else EmbeddingService(settings)
-    store = None if dry_run else SupabaseVectorStore(settings)
+    store = None if dry_run else SQLAlchemyVectorStore(settings)
     stats = {"urls_processed": 0, "pdfs_processed": 0, "chunks_created": 0, "chunks_skipped": 0, "chunks_updated": 0, "failures": 0}
     for source_url in sources:
         documents, failures = crawler.crawl(source_url)
@@ -61,7 +61,13 @@ def main() -> int:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     try:
-        stats = run(args.source, args.dry_run)
+        if args.dry_run:
+            stats = run(args.source, True)
+        else:
+            from app import create_app
+            flask_app = create_app()
+            with flask_app.app_context():
+                stats = run(args.source, False)
     except ConfigurationError as exc:
         logger.error("Configuration error: %s", exc)
         return 2

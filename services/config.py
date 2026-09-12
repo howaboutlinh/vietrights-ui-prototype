@@ -36,8 +36,6 @@ class Settings:
     gemini_api_key: str = ""
     chat_model: str = "gemini-3.8-flash"
     embedding_model: str = "gemini-embedding-001"
-    supabase_url: str = ""
-    supabase_service_role_key: str = ""
     database_url: str = ""
     match_count: int = 6
     match_threshold: float = 0.60
@@ -52,8 +50,6 @@ class Settings:
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
             chat_model=os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash")).strip(),
             embedding_model=os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001").strip(),
-            supabase_url=os.getenv("SUPABASE_URL", "").strip(),
-            supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip(),
             database_url=os.getenv("DATABASE_URL", "").strip(),
             match_count=_int_env("RAG_MATCH_COUNT", 6),
             match_threshold=_float_env("RAG_MATCH_THRESHOLD", 0.60),
@@ -68,14 +64,24 @@ class Settings:
         if missing:
             env_names = {
                 "gemini_api_key": "GEMINI_API_KEY",
-                "supabase_url": "SUPABASE_URL",
-                "supabase_service_role_key": "SUPABASE_SERVICE_ROLE_KEY",
                 "database_url": "DATABASE_URL",
             }
             labels = ", ".join(env_names.get(name, name) for name in missing)
             raise ConfigurationError(f"Missing required environment variable(s): {labels}")
         if self.embedding_dimension != 768:
             raise ConfigurationError("EMBEDDING_DIMENSION must be 768 to match the database migration.")
+
+
+def sqlalchemy_database_url(database_url: str) -> str:
+    """Select psycopg 3 explicitly without logging or otherwise exposing the URL."""
+    value = str(database_url or "").strip()
+    if value.startswith("postgresql+psycopg://"):
+        return value
+    if value.startswith("postgresql://"):
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
+    raise ConfigurationError("DATABASE_URL must be a PostgreSQL connection URL.")
 
 
 def knowledge_sources() -> list[str]:

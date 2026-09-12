@@ -1,55 +1,108 @@
-"""Server-only Supabase storage and pgvector similarity RPC access."""
+"""Transactional SQLAlchemy storage and pgvector cosine retrieval."""
+
 from __future__ import annotations
-from dataclasses import asdict
+
 from typing import Any, Iterable
-from services.chunking import KnowledgeChunk
+
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import SQLAlchemyError
+
+from services.chunking import KnowledgeChunk as ChunkPayload
 from services.config import Settings
+from services.database import db
+from services.models import KnowledgeChunk as KnowledgeChunkModel
+
 
 class VectorStoreError(RuntimeError):
     """Raised when vector persistence or retrieval fails safely."""
 
-class SupabaseVectorStore:
-    """Small adapter around the privileged server-side Supabase client."""
-    def __init__(self, settings: Settings | None = None, client: Any | None = None):
+
+class SQLAlchemyVectorStore:
+    """Persist and search knowledge chunks through the Flask-managed session."""
+
+    def __init__(self, settings: Settings | None = None, session: Any | None = None):
         self.settings = settings or Settings.from_env()
-        self.settings.validate(["supabase_url", "supabase_service_role_key"])
-        if client is None:
-            from supabase import create_client
-            client = create_client(self.settings.supabase_url, self.settings.supabase_service_role_key)
-        self.client = client
+        self.settings.validate(["database_url"])
+        self.session = session if session is not None else db.session
 
     def existing_hashes(self, hashes: Iterable[str]) -> set[str]:
+        """Return hashes already present in PostgreSQL."""
         values = list(dict.fromkeys(hashes))
         if not values:
             return set()
         try:
-            response = self.client.table("knowledge_chunks").select("content_hash").in_("content_hash", values).execute()
-            return {str(row["content_hash"]) for row in (response.data or [])}
-        except Exception as exc:
+            statement = select(KnowledgeChunkModel.content_hash).where(KnowledgeChunkModel.content_hash.in_(values))
+            return {str(value) for value in self.session.scalars(statement).all()}
+        except SQLAlchemyError as exc:
+            self.session.rollback()
             raise VectorStoreError("Unable to check existing knowledge chunks.") from exc
 
-    def upsert_chunks(self, chunks: list[KnowledgeChunk], embeddings: list[list[float]]) -> dict[str, int]:
+    @staticmethod
+    def _row(chunk: ChunkPayload, embedding: list[float]) -> dict[str, Any]:
+        return {
+            "source_name": chunk.source_name,
+            "source_url": chunk.source_url,
+            "document_title": chunk.document_title,
+            "document_type": chunk.document_type,
+            "section_title": chunk.section_title,
+            "content": chunk.content,
+            "content_hash": chunk.content_hash,
+            "chunk_index": chunk.chunk_index,
+            "metadata": chunk.metadata,
+            "embedding": embedding,
+        }
+
+    def upsert_chunks(self, chunks: list[ChunkPayload], embeddings: list[list[float]]) -> dict[str, int]:
+        """Insert new hashes atomically and ignore duplicates, including concurrent ones."""
         if len(chunks) != len(embeddings):
             raise ValueError("Each chunk must have exactly one embedding.")
-        existing = self.existing_hashes(chunk.content_hash for chunk in chunks)
-        new_pairs = [(chunk, vector) for chunk, vector in zip(chunks, embeddings) if chunk.content_hash not in existing]
-        if new_pairs:
-            rows = []
-            for chunk, vector in new_pairs:
-                row = asdict(chunk)
-                row["embedding"] = vector
-                rows.append(row)
-            try:
-                self.client.table("knowledge_chunks").upsert(rows, on_conflict="content_hash").execute()
-            except Exception as exc:
-                raise VectorStoreError("Unable to store knowledge chunks.") from exc
-        return {"created": len(new_pairs), "skipped": len(chunks) - len(new_pairs), "updated": 0}
+        if any(len(vector) != self.settings.embedding_dimension for vector in embeddings):
+            raise ValueError("Embedding dimension does not match EMBEDDING_DIMENSION.")
+        if not chunks:
+            return {"created": 0, "skipped": 0, "updated": 0}
+        rows = [self._row(chunk, vector) for chunk, vector in zip(chunks, embeddings)]
+        table = KnowledgeChunkModel.__table__
+        statement = (
+            insert(table)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=[table.c.content_hash])
+            .returning(table.c.content_hash)
+        )
+        try:
+            created_hashes = list(self.session.scalars(statement).all())
+            self.session.commit()
+        except SQLAlchemyError as exc:
+            self.session.rollback()
+            raise VectorStoreError("Unable to store knowledge chunks.") from exc
+        created = len(created_hashes)
+        return {"created": created, "skipped": len(chunks) - created, "updated": 0}
 
     def match(self, embedding: list[float], threshold: float, count: int) -> list[dict[str, Any]]:
+        """Return highest cosine-similarity chunks above the configured threshold."""
         if len(embedding) != self.settings.embedding_dimension:
             raise VectorStoreError("Query embedding dimension does not match the database schema.")
+        distance = KnowledgeChunkModel.embedding.cosine_distance(embedding)
+        similarity = (1 - distance).label("similarity")
+        statement = (
+            select(
+                KnowledgeChunkModel.id,
+                KnowledgeChunkModel.source_name,
+                KnowledgeChunkModel.source_url,
+                KnowledgeChunkModel.document_title,
+                KnowledgeChunkModel.document_type,
+                KnowledgeChunkModel.section_title,
+                KnowledgeChunkModel.content,
+                KnowledgeChunkModel.content_hash,
+                KnowledgeChunkModel.chunk_metadata.label("metadata"),
+                similarity,
+            )
+            .where(similarity >= float(threshold))
+            .order_by(distance.asc())
+            .limit(max(0, int(count)))
+        )
         try:
-            response = self.client.rpc("match_knowledge_chunks", {"query_embedding": embedding, "match_threshold": float(threshold), "match_count": int(count)}).execute()
-            return [dict(row) for row in (response.data or [])]
-        except Exception as exc:
+            return [dict(row) for row in self.session.execute(statement).mappings().all()]
+        except SQLAlchemyError as exc:
+            self.session.rollback()
             raise VectorStoreError("Unable to search the knowledge base.") from exc

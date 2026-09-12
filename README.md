@@ -1,12 +1,12 @@
 # VietRights
 
-Vietnamese-first workplace-rights assistant for migrant workers in Australia. The existing Flask intake UI is backed by a production-oriented retrieval-augmented generation (RAG) pipeline using Gemini, Supabase Postgres, and pgvector.
+Vietnamese-first workplace-rights assistant for migrant workers in Australia. The existing Flask intake UI is backed by a production-oriented retrieval-augmented generation (RAG) pipeline using Gemini, Flask-SQLAlchemy, Supabase Postgres, psycopg 3, and pgvector.
 
 ## Architecture
 
 Offline ingestion (manual/admin only):
 
-`4 approved source roots → bounded same-domain HTML/PDF crawler → cleaned sections → overlapping chunks → Gemini RETRIEVAL_DOCUMENT embeddings → Supabase pgvector`
+`4 approved source roots → bounded same-domain HTML/PDF crawler → cleaned sections → overlapping chunks → Gemini RETRIEVAL_DOCUMENT embeddings → SQLAlchemy transaction → Supabase pgvector`
 
 Online `/analyze` request:
 
@@ -19,8 +19,10 @@ The web process never scrapes or embeds source documents during startup or a nor
 1. Create a free project at [Supabase](https://supabase.com/dashboard).
 2. In **SQL Editor**, run [`supabase/migrations/001_vector_knowledge_base.sql`](supabase/migrations/001_vector_knowledge_base.sql). This enables pgvector, creates `knowledge_chunks`, RLS restrictions, an HNSW cosine index, and `match_knowledge_chunks`.
 3. Find the project URL under **Project Settings → API**.
-4. Copy the server-only service-role key from **Project Settings → API keys**. Never use this key in browser JavaScript.
-5. Open **Connect** at the top of the project page to copy the Postgres connection string (`DATABASE_URL`). Use the pooler connection where appropriate for hosted/serverless clients.
+4. Open **Connect** at the top of the project page, choose **Session Pooler**, and copy its PostgreSQL connection string.
+5. URL-encode special characters in the database password and set the SQLAlchemy driver scheme to `postgresql+psycopg://` (the application also safely normalizes `postgresql://` and `postgres://`). Keep `sslmode=require` in the URL or use the configured SSL connection option.
+
+The application reads database credentials exclusively from `DATABASE_URL`. It does not use Supabase REST, Auth, or Storage, so `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are not required.
 
 The SQL vector dimension is 768 and must match `EMBEDDING_DIMENSION=768`. Changing it requires a migration and re-embedding every document.
 
@@ -30,15 +32,13 @@ The SQL vector dimension is 768 and must match `EMBEDDING_DIMENSION=768`. Changi
 cp .env.example .env
 ```
 
-Required for web retrieval (the database URL is supported for direct admin/migration tooling but the runtime client uses the Supabase URL and service-role key):
+Required for web retrieval:
 
 ```text
 GEMINI_API_KEY=
 GEMINI_CHAT_MODEL=gemini-3.8-flash
 GEMINI_EMBEDDING_MODEL=gemini-embedding-001
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-DATABASE_URL=
+DATABASE_URL=postgresql+psycopg://postgres.PROJECT:URL_ENCODED_PASSWORD@SESSION_POOLER_HOST:5432/postgres?sslmode=require
 RAG_MATCH_COUNT=6
 RAG_MATCH_THRESHOLD=0.60
 EMBEDDING_DIMENSION=768
@@ -105,14 +105,16 @@ Create a Python Web Service and configure:
 - Environment: every web retrieval variable listed above
 - Health URL: `/`
 
-Add secrets in **Render Dashboard → Service → Environment**. Do not commit them. Deploy starts only the Flask web application. Run ingestion separately as a manual/admin job from a trusted environment with the four source variables set. A restart or redeploy must not scrape and re-embed the sources.
+Add secrets in **Render Dashboard → Service → Environment**. Use the Supabase **Session Pooler** URL for `DATABASE_URL`; direct IPv6 database URLs are less suitable where the host lacks IPv6. Do not commit credentials. Deploy starts only the Flask web application. Run ingestion separately as a manual/admin job from a trusted environment with the four source variables set. A restart or redeploy must not scrape and re-embed the sources.
+
+SQLAlchemy is configured for Render with `pool_pre_ping=True`, `pool_recycle=300`, a pool size of 3, max overflow of 2, and a 30-second pool timeout. The application never calls `db.create_all()`; the versioned SQL migration remains the production schema source.
 
 To refresh content safely, run the ingestion command again. Unchanged chunks are skipped. Inspect failures and retrieval quality before relying on newly indexed content.
 
 ## Security and answer behavior
 
-- `SUPABASE_SERVICE_ROLE_KEY` and `DATABASE_URL` are backend-only secrets and must never appear in HTML, frontend JavaScript, logs, or responses.
-- RLS denies table access to `anon` and `authenticated`; only the backend service role can write or invoke the match function.
+- `DATABASE_URL` is a backend-only secret and must never appear in HTML, frontend JavaScript, logs, or responses.
+- RLS continues to deny access to Supabase public client roles. The Flask backend connects directly through the protected Session Pooler database user.
 - Source and model text is rendered with DOM `textContent`, not unsanitized `innerHTML`.
 - If no evidence passes the configured threshold, VietRights returns a cautious no-evidence message instead of generating a legal answer.
 - VietRights provides general information, not professional legal advice.
