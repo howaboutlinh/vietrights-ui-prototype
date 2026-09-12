@@ -256,7 +256,7 @@ function updateProgressUI() {
   updateSidebarUI();
 }
 
-function showStep(step) {
+function showStep(step, { scroll = false } = {}) {
   const nextStep = Math.min(5, Math.max(1, Number(step) || 1));
   currentStep = nextStep;
 
@@ -268,6 +268,29 @@ function showStep(step) {
 
   updateProgressUI();
   clearFieldErrors();
+  if (scroll) {
+    clearSourcesHashForQuestionnaire();
+    scrollQuestionnaireIntoView();
+  }
+}
+
+function clearSourcesHashForQuestionnaire() {
+  if (window.location.hash === '#sources') {
+    history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  }
+}
+
+function scrollQuestionnaireIntoView() {
+  requestAnimationFrame(() => {
+    const intakeCard = document.querySelector('.intake-card');
+    if (!intakeCard) return;
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    intakeCard.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start'
+    });
+  });
 }
 
 function bindChoiceButtons() {
@@ -659,7 +682,7 @@ async function runAnalysis() {
   const errorMessage = document.getElementById('analysis-error-message');
   const errorTitle = document.getElementById('analysis-error-title');
 
-  showStep(5);
+  showStep(5, { scroll: true });
   setLoadingState(true);
   if (errorBox) errorBox.hidden = true;
   if (resultContent) resultContent.hidden = true;
@@ -719,7 +742,7 @@ function bindNavigation() {
   backBtn?.addEventListener('click', () => {
     if (isAnalyzing) return;
     if (currentStep > 1) {
-      showStep(currentStep - 1);
+      showStep(currentStep - 1, { scroll: true });
     }
   });
 
@@ -728,7 +751,7 @@ function bindNavigation() {
     if (!validateStep(currentStep)) return;
 
     if (currentStep < 4) {
-      showStep(currentStep + 1);
+      showStep(currentStep + 1, { scroll: true });
       return;
     }
 

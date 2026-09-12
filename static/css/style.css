@@ -589,6 +589,7 @@ img {
 
 .intake-card {
   padding: 42px;
+  scroll-margin-top: 100px;
   background: var(--paper);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-xl);
