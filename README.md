@@ -88,6 +88,14 @@ python scripts/ingest_knowledge.py --source 1
 
 Each chunk has a SHA-256 hash derived from normalized content plus source URL. Re-running ingestion skips unchanged hashes and does not duplicate them. The command reports processed URLs/PDFs, created/skipped/updated chunks, and failures. Review website terms and crawling policies before ingestion, and use only content you are authorized to process.
 
+## Agentic knowledge retrieval
+
+`POST /analyze` sends the complete structured intake to a bounded Gemini research agent. The agent can call four read-only tools: semantic knowledge search, topic-focused search, adjacent-chunk lookup, and source-section lookup. English search queries are encouraged because the indexed official material is English; the original Vietnamese intake remains available to both retrieval and final response generation.
+
+The server enforces a maximum of 8 tool calls across at most 3 planning rounds, at most 6 results per call, a 70-second research budget, pgvector similarity thresholds, and an allowlist that prevents section lookup for URLs not first returned by search. The model never receives database credentials, embeddings, or raw SQL access. Source metadata is attached by the server, and unsupported citation numbers cause the response to be rejected.
+
+Successful responses are JSON with `content_format: "markdown"`, structured `summary`, `issues`, `evidence`, `next_steps`, `clarification_questions`, `risk_level`, and server-controlled `sources`. The frontend renders a safe Markdown subset using DOM nodes; it never injects model output as raw HTML.
+
 ## Test
 
 ```bash

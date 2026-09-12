@@ -499,6 +499,40 @@ function isSafeUrl(urlStr) {
   }
 }
 
+// Render a deliberately small Markdown subset using DOM nodes, never raw HTML.
+function renderInlineMarkdown(node, value) {
+  if (!node) return;
+  node.textContent = '';
+  const text = String(value ?? '');
+  const tokenPattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
+  let cursor = 0;
+  for (const match of text.matchAll(tokenPattern)) {
+    node.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    let child;
+    if (match[2]) {
+      child = document.createElement('strong');
+      child.textContent = match[2];
+    } else if (match[3]) {
+      child = document.createElement('em');
+      child.textContent = match[3];
+    } else if (match[4]) {
+      child = document.createElement('code');
+      child.textContent = match[4];
+    } else if (match[5] && isSafeUrl(match[6])) {
+      child = document.createElement('a');
+      child.textContent = match[5];
+      child.href = match[6].trim();
+      child.target = '_blank';
+      child.rel = 'noopener noreferrer';
+    } else {
+      child = document.createTextNode(match[0]);
+    }
+    node.appendChild(child);
+    cursor = match.index + match[0].length;
+  }
+  node.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
 function renderResult(result) {
   const riskBadge = document.getElementById('result-risk');
   const summary = document.getElementById('result-summary');
@@ -517,7 +551,7 @@ function renderResult(result) {
     riskBadge.textContent = t(`result.risk_${riskLevel}`, riskLevel.toUpperCase());
   }
   if (summary) {
-    summary.textContent = result?.summary || t('result.no_summary', 'No summary available.');
+    renderInlineMarkdown(summary, result?.summary || t('result.no_summary', 'No summary available.'));
   }
 
   const renderList = (node, items) => {
@@ -528,7 +562,7 @@ function renderResult(result) {
       .filter((item) => item !== null && item !== undefined && String(item).trim() !== '')
       .forEach((item) => {
         const li = document.createElement('li');
-        li.textContent = String(item);
+        renderInlineMarkdown(li, item);
         node.appendChild(li);
       });
   };
@@ -636,7 +670,7 @@ async function runAnalysis() {
   if (backBtn) backBtn.disabled = true;
 
   analysisAbortController = new AbortController();
-  const timeoutMs = 30000;
+  const timeoutMs = 120000;
   const timeoutId = setTimeout(() => {
     analysisAbortController.abort();
   }, timeoutMs);
@@ -659,7 +693,7 @@ async function runAnalysis() {
     if (errorBox && errorMessage) {
       let displayError = error.message || '';
       if (error.name === 'AbortError') {
-        displayError = t('error.timeout', 'Request timed out (30 seconds). Please check your internet connection and try again.');
+        displayError = t('error.timeout', 'Request timed out. Please check your internet connection and try again.');
       } else if (!displayError) {
         displayError = t('error.unexpected', 'An unexpected error occurred while analyzing the case.');
       }

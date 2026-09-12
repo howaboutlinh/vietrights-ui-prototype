@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -192,6 +193,19 @@ def _response_schema() -> Dict[str, Any]:
     }
 
 
+def _citations_are_grounded(values: list[str], source_count: int) -> bool:
+    """Require every substantive generated claim to cite a retrieved source."""
+    if not values:
+        return True
+    if source_count < 1:
+        return False
+    for value in values:
+        references = [int(number) for number in re.findall(r"\[(\d+)\]", value)]
+        if not references or any(number < 1 or number > source_count for number in references):
+            return False
+    return True
+
+
 def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     """Analyze a workplace rights case using retrieved context and Gemini LLM."""
     if not isinstance(case_data, dict):
@@ -224,7 +238,14 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     if language not in {"vi", "en"}:
         language = "vi"
 
-    retrieved_context = retrieve_context(case_data)
+    try:
+        retrieved_context = retrieve_context(case_data)
+    except errors.APIError as exc:
+        if exc.code in (408, 504) or exc.status in ("DEADLINE_EXCEEDED",):
+            raise LLMTimeoutError("The AI research request timed out. Please try again.") from None
+        if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",):
+            raise LLMQuotaError("API rate limit or quota exceeded. Please try again later.") from None
+        raise LLMServiceError("An error occurred while researching official sources.") from None
     if not retrieved_context:
         message = (
             "Chưa tìm thấy thông tin chính thức đủ phù hợp để trả lời tình huống này. "
@@ -238,6 +259,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
             "summary": message,
             "issues": [], "evidence": [], "next_steps": [], "clarification_questions": [],
             "risk_level": "medium", "sources": [],
+            "content_format": "markdown",
             "retrieval": {"used": True, "result_count": 0},
         }
     formatted_context = _format_context_for_prompt(retrieved_context)
@@ -279,7 +301,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
                 temperature=0.3,
                 response_mime_type="application/json",
                 response_schema=_response_schema(),
-                http_options=types.HttpOptions(timeout=DEFAULT_TIMEOUT_MS),
+                http_options=types.HttpOptions(timeout=max(DEFAULT_TIMEOUT_MS, 40000)),
             ),
         )
     except errors.APIError as exc:
@@ -342,8 +364,13 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     if result["risk_level"] not in {"low", "medium", "high"}:
         result["risk_level"] = "medium"
 
+    claims = [result["summary"], *result["issues"], *result["next_steps"]]
+    if not _citations_are_grounded([value for value in claims if value], len(source_refs)):
+        raise LLMInvalidResponseError("The model response contained an unsupported or invalid citation.")
+
     result["sources"] = [item for item in source_refs if str(item.get("url") or "").startswith(("http://", "https://"))]
     result["answer"] = result["summary"]
+    result["content_format"] = "markdown"
     result["retrieval"] = {"used": True, "result_count": len(result["sources"])}
 
     return result
