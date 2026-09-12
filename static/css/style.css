@@ -379,6 +379,10 @@ img {
 
 /* SOURCES */
 
+#sources {
+  scroll-margin-top: 100px;
+}
+
 .source-strip {
   background: rgba(255, 253, 249, .62);
   border-top: 1px solid var(--line-soft);
@@ -719,13 +723,14 @@ textarea:focus {
   gap: 12px;
 }
 
-.checkbox-card {
+.form-group label.checkbox-card {
   position: relative;
   min-height: 64px;
   padding: 14px 18px;
   display: flex;
   align-items: center;
   gap: 12px;
+  margin: 0;
   color: var(--ink);
   background: white;
   border: 1px solid #d7ddd8;
