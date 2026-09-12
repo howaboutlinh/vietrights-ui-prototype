@@ -8,8 +8,6 @@ click==8.5.0
 cryptography==50.0.1
 distro==1.9.0
 Flask==3.1.3
-google-auth==2.58.0
-google-genai==2.23.0
 gunicorn==26.2.0
 h11==0.16.0
 httpcore==1.0.9
@@ -19,10 +17,7 @@ itsdangerous==2.2.0
 Jinja2==3.1.6
 jiter==0.16.0
 MarkupSafe==3.0.3
-openai==1.101.0
-pyasn1==0.6.4
-pyasn1_modules==0.4.2
-pycparser==3.0
+google-genai==1.20.0
 pydantic==2.13.5
 pydantic_core==2.46.5
 python-dotenv==1.1.1

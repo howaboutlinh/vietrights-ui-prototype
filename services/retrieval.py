@@ -9,7 +9,7 @@ KNOWLEDGE_DIR = BASE_DIR / "data" / "knowledge"
 
 
 TOPIC_KEYWORDS = {
-    "pay": ["pay", "wage", "underpayment", "low pay", "hourly pay", "minimum pay"],
+    "pay": ["pay", "wage", "underpayment", "low pay", "hourly pay", "minimum pay", "fortnightly", "fortnight", "weekly pay"],
     "payslip": ["payslip", "pay slip", "salary slip", "payment record"],
     "overtime": ["overtime", "extra hours", "long hours", "hours worked"],
     "hours_and_breaks": ["hours", "break", "rest break", "meal break", "weekend work"],
@@ -167,7 +167,7 @@ def retrieve_context(case_data: Dict[str, Any], top_k: int = 5) -> List[Dict[str
 
 def demo_retrieval():
     case = {
-        "mainIssue": "pay_underpayment",
+        "mainIssues": ["pay", "hours"],
         "pay": {
             "hourlyPay": 25,
             "payslipStatus": "no",
