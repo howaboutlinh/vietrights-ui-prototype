@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from services.chunking import DocumentSection, SourceDocument, chunk_document, content_hash
 from services.source_loader import extract_html, extract_pdf
+import services.source_loader as source_loader
 
 def test_html_extraction_removes_navigation_and_keeps_structure():
     html = """<html><head><title>Pay rights</title></head><body><nav>Menu</nav><main>
@@ -31,3 +32,20 @@ def test_chunk_overlap_and_maximum_size():
 def test_duplicate_content_hash_is_stable():
     assert content_hash("same   content", "https://example/a") == content_hash("same content", "https://example/a")
     assert content_hash("same content", "https://example/a") != content_hash("same content", "https://example/b")
+
+def test_approved_local_text_source_with_provenance(tmp_path, monkeypatch):
+    fake_module = tmp_path / "services" / "source_loader.py"
+    source_dir = tmp_path / "data" / "sources"
+    source_dir.mkdir(parents=True)
+    source_file = source_dir / "official.txt"
+    source_file.write_text("Official workplace safety guidance.", encoding="utf-8")
+    sidecar = source_dir / "official.txt.metadata.json"
+    sidecar.write_text(
+        '{"source_url":"https://example.gov.au/rights","source_name":"Official agency","document_title":"Worker rights"}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(source_loader, "__file__", str(fake_module))
+    document = source_loader.load_local_document(source_file)
+    assert document.document_type == "text"
+    assert document.source_url == "https://example.gov.au/rights"
+    assert document.sections[0].text

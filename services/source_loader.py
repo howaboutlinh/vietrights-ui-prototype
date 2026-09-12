@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
 import re
+import time
 from collections import deque
 from pathlib import Path
 from urllib.parse import urldefrag, urljoin, urlparse
+from urllib.robotparser import RobotFileParser
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,6 +25,35 @@ MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024
 
 class SourceLoadError(RuntimeError):
     """Raised for a source response that cannot be safely processed."""
+
+
+def load_local_document(path_value: str | Path) -> SourceDocument:
+    """Load an approved local PDF/text source and optional provenance sidecar."""
+    path = Path(path_value).expanduser().resolve()
+    approved_root = (Path(__file__).resolve().parents[1] / "data" / "sources").resolve()
+    if approved_root not in path.parents:
+        raise SourceLoadError("Local knowledge files must be stored under data/sources/.")
+    if not path.is_file():
+        raise SourceLoadError(f"Local source file does not exist: {path.name}")
+    if path.suffix.lower() not in {".pdf", ".txt"}:
+        raise SourceLoadError("Local sources must be PDF or UTF-8 text files.")
+    sidecar = path.with_suffix(path.suffix + ".metadata.json")
+    metadata: dict[str, str] = {}
+    if sidecar.is_file():
+        try:
+            metadata = json.loads(sidecar.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SourceLoadError(f"Invalid provenance sidecar: {sidecar.name}") from exc
+    source_url = str(metadata.get("source_url") or path.as_uri())
+    source_name = str(metadata.get("source_name") or "Approved local source")
+    if path.suffix.lower() == ".pdf":
+        document = extract_pdf(path.read_bytes(), source_url, source_name)
+    else:
+        text = normalize_text(path.read_text(encoding="utf-8"))
+        document = SourceDocument(source_name, source_url, path.stem, "text", [DocumentSection(text=text)] if text else [])
+    if metadata.get("document_title"):
+        document.document_title = str(metadata["document_title"])
+    return document
 
 
 def _source_name(url: str) -> str:
@@ -110,10 +142,24 @@ class SourceCrawler:
         self.session = session or requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
 
+    def _robots(self, root_url: str) -> RobotFileParser:
+        parsed = urlparse(root_url)
+        robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+        response = self.session.get(robots_url, timeout=self.timeout)
+        if response.status_code in {401, 403}:
+            raise SourceLoadError(f"Robots policy could not be accessed for {parsed.hostname}; refusing to crawl.")
+        parser = RobotFileParser()
+        parser.set_url(robots_url)
+        parser.parse(response.text.splitlines() if response.ok else [])
+        return parser
+
     def crawl(self, root_url: str) -> tuple[list[SourceDocument], list[tuple[str, str]]]:
         parsed = urlparse(root_url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise SourceLoadError(f"Invalid source URL: {root_url}")
+        robots = self._robots(root_url)
+        crawl_delay = robots.crawl_delay(USER_AGENT) or robots.crawl_delay("*") or 0
+        request_delay = max(0.5, float(crawl_delay))
         queue = deque([(urldefrag(root_url)[0], 0)])
         visited: set[str] = set()
         documents: list[SourceDocument] = []
@@ -122,8 +168,13 @@ class SourceCrawler:
             url, depth = queue.popleft()
             if url in visited or not _allowed(url, parsed.hostname):
                 continue
+            if not robots.can_fetch(USER_AGENT, url):
+                failures.append((url, "Blocked by robots.txt"))
+                continue
             visited.add(url)
             try:
+                if documents or failures:
+                    time.sleep(request_delay)
                 response = self.session.get(url, timeout=self.timeout)
                 response.raise_for_status()
                 declared_size = int(response.headers.get("content-length", "0") or 0)
