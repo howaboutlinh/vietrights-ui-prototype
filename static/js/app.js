@@ -739,6 +739,36 @@ function bindNavigation() {
     if (isAnalyzing) return;
     await runAnalysis();
   });
+
+  document.querySelectorAll('a[href="#sources"]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      scrollToSources('smooth');
+    });
+  });
+}
+
+function scrollToSources(behavior = 'auto') {
+  const sources = document.getElementById('sources');
+  if (!sources) return;
+
+  sources.scrollIntoView({ behavior, block: 'start' });
+  history.replaceState(null, '', '#sources');
+}
+
+function bindSourcesHashNavigation() {
+  if (window.location.hash !== '#sources') return;
+
+  const images = [...document.images];
+  const imagesReady = Promise.all(images.map((image) => {
+    if (image.complete) return Promise.resolve();
+    return new Promise((resolve) => {
+      image.addEventListener('load', resolve, { once: true });
+      image.addEventListener('error', resolve, { once: true });
+    });
+  }));
+
+  imagesReady.then(() => requestAnimationFrame(() => scrollToSources('auto')));
 }
 
 function bindLanguageToggle() {
@@ -782,3 +812,4 @@ async function initialize() {
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
+window.addEventListener('load', bindSourcesHashNavigation);
