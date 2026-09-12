@@ -14,7 +14,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+GEMINI_MODEL = os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 PROMPTS_FILE_PATH = Path(__file__).resolve().parents[1] / "data" / "locales" / "prompts.json"
 DEFAULT_TIMEOUT_MS = int(os.getenv("GEMINI_REQUEST_TIMEOUT_MS", "25000"))
 SUPPORTED_WORKPLACE_ISSUES = {"pay", "payslip", "hours", "visa", "safety", "harassment", "other"}
@@ -126,25 +126,20 @@ def _format_context_for_prompt(context_entries: List[Dict[str, Any]]) -> str:
         )
 
     blocks = []
-    for entry in context_entries:
-        title = str(entry.get("title") or "Untitled source").strip()
-        organisation = str(entry.get("organisation") or "Unknown organisation").strip()
-        topic = str(entry.get("topic") or "general").strip()
+    for number, entry in enumerate(context_entries, start=1):
+        title = str(entry.get("document_title") or "Untitled source").strip()
+        organisation = str(entry.get("source_name") or "Unknown organisation").strip()
+        section = str(entry.get("section_title") or "").strip()
         source_url = str(entry.get("source_url") or "").strip()
-        content = entry.get("relevant_content") or entry.get("content") or []
-
-        if isinstance(content, list):
-            content_items = [str(item).strip() for item in content if str(item).strip()]
-        else:
-            content_items = [str(content).strip()] if str(content).strip() else []
+        content = str(entry.get("content") or "").strip()
 
         block = (
-            f"- Title: {title}\n"
+            f"[SOURCE {number}]\n"
+            f"  Title: {title}\n"
             f"  Organisation: {organisation}\n"
-            f"  Topic: {topic}\n"
+            f"  Section: {section or 'Not specified'}\n"
             f"  Source URL: {source_url or 'URL not provided'}\n"
-            f"  Content:\n"
-            + ("\n".join(f"    * {item}" for item in content_items) if content_items else "    * No extracted content available yet.")
+            f"  Evidence: {content}"
         )
         blocks.append(block)
 
@@ -229,15 +224,34 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     if language not in {"vi", "en"}:
         language = "vi"
 
-    retrieved_context = retrieve_context(case_data, top_k=5)
+    retrieved_context = retrieve_context(case_data)
+    if not retrieved_context:
+        message = (
+            "Chưa tìm thấy thông tin chính thức đủ phù hợp để trả lời tình huống này. "
+            "Bạn nên kiểm tra trực tiếp với Fair Work Ombudsman hoặc dịch vụ hỗ trợ pháp lý phù hợp."
+            if language == "vi" else
+            "No sufficiently relevant official information was found for this situation. "
+            "Please check directly with the Fair Work Ombudsman or an appropriate legal support service."
+        )
+        return {
+            "answer": message,
+            "summary": message,
+            "issues": [], "evidence": [], "next_steps": [], "clarification_questions": [],
+            "risk_level": "medium", "sources": [],
+            "retrieval": {"used": True, "result_count": 0},
+        }
     formatted_context = _format_context_for_prompt(retrieved_context)
     source_refs = [
         {
-            "title": item.get("title"),
-            "organisation": item.get("organisation"),
+            "number": number,
+            "title": item.get("document_title"),
+            "section": item.get("section_title"),
+            "source_name": item.get("source_name"),
+            "organisation": item.get("source_name"),
             "url": item.get("source_url"),
+            "similarity": round(float(item.get("similarity") or 0), 4),
         }
-        for item in retrieved_context
+        for number, item in enumerate(retrieved_context, start=1)
         if item.get("source_url")
     ]
 
@@ -254,7 +268,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     client = _get_gemini_client()
-    model_name = os.getenv("GEMINI_MODEL", GEMINI_MODEL)
+    model_name = os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", GEMINI_MODEL))
 
     try:
         response = client.models.generate_content(
@@ -328,27 +342,8 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     if result["risk_level"] not in {"low", "medium", "high"}:
         result["risk_level"] = "medium"
 
-    if source_refs:
-        valid_sources = []
-        for item in source_refs:
-            if item.get("title") or item.get("organisation") or item.get("url"):
-                url = str(item.get("url") or "").strip()
-                valid_sources.append({
-                    "title": str(item.get("title") or "Official source").strip(),
-                    "organisation": str(item.get("organisation") or "Official organisation").strip(),
-                    "url": url if url.startswith(("http://", "https://")) else "",
-                })
-        result["sources"] = valid_sources
-    else:
-        sanitized_sources = []
-        for item in result.get("sources", []):
-            if isinstance(item, dict) and (item.get("title") or item.get("organisation")):
-                url = str(item.get("url") or "").strip()
-                sanitized_sources.append({
-                    "title": str(item.get("title") or "Official source").strip(),
-                    "organisation": str(item.get("organisation") or "Official organisation").strip(),
-                    "url": url if url.startswith(("http://", "https://")) else "",
-                })
-        result["sources"] = sanitized_sources
+    result["sources"] = [item for item in source_refs if str(item.get("url") or "").startswith(("http://", "https://"))]
+    result["answer"] = result["summary"]
+    result["retrieval"] = {"used": True, "result_count": len(result["sources"])}
 
     return result

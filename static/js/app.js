@@ -553,13 +553,24 @@ function renderResult(result) {
       card.className = 'source-item';
 
       const titleEl = document.createElement('strong');
-      titleEl.textContent = String(item?.title || t('result.default_source_title', 'Official source'));
+      const number = Number(item?.number) || sourceList.indexOf(item) + 1;
+      titleEl.textContent = `[${number}] ${String(item?.title || t('result.default_source_title', 'Official source'))}`;
       card.appendChild(titleEl);
 
-      if (item?.organisation) {
+      if (item?.section) {
+        const sectionEl = document.createElement('span');
+        sectionEl.className = 'source-section';
+        sectionEl.textContent = String(item.section);
+        card.appendChild(sectionEl);
+      }
+
+      if (item?.source_name || item?.organisation) {
         const orgEl = document.createElement('span');
         orgEl.className = 'source-org';
-        orgEl.textContent = String(item.organisation);
+        const rawUrl = String(item?.url || '').trim();
+        let domain = '';
+        try { domain = new URL(rawUrl).hostname; } catch { domain = ''; }
+        orgEl.textContent = [String(item.source_name || item.organisation), domain].filter(Boolean).join(' · ');
         card.appendChild(orgEl);
       }
 
@@ -568,7 +579,7 @@ function renderResult(result) {
         const linkEl = document.createElement('a');
         linkEl.className = 'source-link';
         linkEl.href = rawUrl;
-        linkEl.textContent = rawUrl;
+        linkEl.textContent = t('result.open_source', 'Open official source ↗');
         linkEl.target = '_blank';
         linkEl.rel = 'noopener noreferrer';
         card.appendChild(linkEl);

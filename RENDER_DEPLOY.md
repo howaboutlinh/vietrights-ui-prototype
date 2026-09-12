@@ -1,31 +1,12 @@
-# Render deployment
+# Render deployment checklist
 
-Build Command:
-pip install -r requirements.txt
+1. Create the Supabase project and run `supabase/migrations/001_vector_knowledge_base.sql`.
+2. Create a Render Python Web Service from this repository.
+3. Set build command to `pip install -r requirements.txt`.
+4. Set start command to `gunicorn app:app`.
+5. Add `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBEDDING_MODEL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `RAG_MATCH_COUNT`, `RAG_MATCH_THRESHOLD`, and `EMBEDDING_DIMENSION` in Render Environment.
+6. Deploy and verify `/` and `/analyze`.
+7. Configure the four `KNOWLEDGE_SOURCE_*` values only in the trusted environment used for ingestion.
+8. Run `python scripts/ingest_knowledge.py --dry-run`, review the output, then run the real ingestion command manually.
 
-Start Command:
-gunicorn app:app
-
-Required Environment Variable:
-GEMINI_API_KEY (or GOOGLE_API_KEY)
-
-Optional Environment Variable:
-GEMINI_MODEL (defaults to gemini-3.6-flash)
-
-## Deployment steps
-1. Create a Render Web Service.
-2. Connect the GitHub repository for this project.
-3. Select the main branch.
-4. Set the Build Command to `pip install -r requirements.txt`.
-5. Set the Start Command to `gunicorn app:app`.
-6. Add `GEMINI_API_KEY` in the Render Environment settings.
-7. Optionally add `GEMINI_MODEL` if you want to override the default model (e.g. `gemini-3.6-flash`).
-8. Deploy the service.
-9. Open the public URL and test `/analyze`.
-
-## Notes
-- Keep the Flask app object named `app`.
-- Do not hardcode the API key in source files.
-- Local development remains available with `python app.py`.
-- Production runs through Gunicorn using `gunicorn app:app`.
-- The Gemini provider is the active API backend for this project.
+The build/deploy command starts the web app only. Knowledge ingestion is a separate admin operation and must not run automatically on deploy or restart. Never expose the Supabase service-role key or database URL to the browser.

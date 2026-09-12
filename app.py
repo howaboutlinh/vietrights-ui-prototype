@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, render_template, request
 
+from services.config import ConfigurationError
 from services.llm import LLMBaseError, analyze_case
 
 app = Flask(__name__)
@@ -32,6 +33,13 @@ def analyze():
             "error_code": exc.error_code,
             "error": exc.safe_message
         }), exc.status_code
+    except ConfigurationError as exc:
+        app.logger.warning("RAG service is not configured: %s", exc)
+        return jsonify({
+            "status": "error",
+            "error_code": "service_unconfigured",
+            "error": "The knowledge service is not configured yet. Please contact the administrator."
+        }), 503
     except ValueError as exc:
         app.logger.warning("Input validation error: %s", exc)
         return jsonify({

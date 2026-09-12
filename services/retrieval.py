@@ -1,187 +1,81 @@
+"""Vietnamese-to-English query rewriting and Supabase vector retrieval."""
+from __future__ import annotations
 import json
-import re
-from pathlib import Path
-from typing import Any, Dict, Iterable, List
+import logging
+import time
+from typing import Any
+from urllib.parse import urlparse
+from google import genai
+from google.genai import types
+from services.config import Settings
+from services.embedding_service import EmbeddingService
+from services.vector_store import SupabaseVectorStore
 
+logger = logging.getLogger(__name__)
+QUERY_REWRITE_INSTRUCTION = """Rewrite the supplied Vietnamese or English worker scenario as one concise English search query for Australian workplace-rights documents. Preserve visa status, age, employment type, industry, location, pay rate, working hours, payslips, tax, superannuation, threats, and unsafe conditions when present. Do not answer the scenario. Return only the English search query."""
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-KNOWLEDGE_DIR = BASE_DIR / "data" / "knowledge"
+def case_to_question(case_data: dict[str, Any]) -> str:
+    """Convert the existing structured intake payload into a retrieval question."""
+    description = str(case_data.get("description") or "").strip()
+    compact = {
+        "issues": case_data.get("mainIssues"), "other_issue": case_data.get("mainIssueOther"),
+        "workplace": case_data.get("workplace"), "workplace_other": case_data.get("workplaceOther"),
+        "work_pattern": case_data.get("workPattern"), "pay": case_data.get("pay"),
+        "payslip_status": case_data.get("payslipStatus"), "payment_method": case_data.get("paymentMethod"),
+        "hours_per_week": case_data.get("hoursPerWeek"), "work_time": case_data.get("workTime"),
+        "overtime": case_data.get("overtime"), "breaks": case_data.get("breaks"),
+        "visa_threat": case_data.get("visaThreat"), "immediate_danger": case_data.get("immediateDanger"),
+        "safety_concern": case_data.get("safetyConcern"), "coercion": case_data.get("coercion"),
+    }
+    facts = json.dumps({key: value for key, value in compact.items() if value not in (None, "", [], {})}, ensure_ascii=False)
+    return f"{description}\nStructured worker facts: {facts}".strip()
 
-
-TOPIC_KEYWORDS = {
-    "pay": ["pay", "wage", "underpayment", "low pay", "hourly pay", "minimum pay", "fortnightly", "fortnight", "weekly pay"],
-    "payslip": ["payslip", "pay slip", "salary slip", "payment record"],
-    "overtime": ["overtime", "extra hours", "long hours", "hours worked"],
-    "hours_and_breaks": ["hours", "break", "rest break", "meal break", "weekend work"],
-    "casual_employment": ["casual", "casual employment", "casual worker", "on-call"],
-    "visa_and_migrant_rights": ["visa", "migrant worker", "work rights", "migration", "visa threat"],
-    "workplace_safety": ["safety", "safe work", "unsafe", "injury", "hazard"],
-}
-
-
-def _normalise_text(value: Any) -> str:
-    if value is None:
+def rewrite_search_query(question: str, settings: Settings | None = None, client: Any | None = None) -> str:
+    """Translate/rewrite for retrieval, falling back to the original on any failure."""
+    clean = str(question or "").strip()
+    if not clean:
         return ""
-    text = str(value).lower()
-    text = re.sub(r"[^a-z0-9\s]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    settings = settings or Settings.from_env()
+    try:
+        settings.validate(["gemini_api_key"])
+        model_client = client or genai.Client(api_key=settings.gemini_api_key, vertexai=False)
+        response = model_client.models.generate_content(
+            model=settings.chat_model, contents=clean,
+            config=types.GenerateContentConfig(system_instruction=QUERY_REWRITE_INSTRUCTION, temperature=0, max_output_tokens=250),
+        )
+        rewritten = str(getattr(response, "text", "") or "").strip()
+        return rewritten or clean
+    except Exception as exc:
+        logger.warning("Query rewrite failed; using original text error=%s", type(exc).__name__)
+        return clean
 
-
-def _flatten_case_values(value: Any) -> List[str]:
-    values: List[str] = []
-
-    if isinstance(value, dict):
-        for item in value.values():
-            values.extend(_flatten_case_values(item))
-    elif isinstance(value, list):
-        for item in value:
-            values.extend(_flatten_case_values(item))
-    elif isinstance(value, (str, int, float, bool)):
-        text = str(value).strip()
-        if text:
-            values.append(text)
-
-    return values
-
-
-def _build_search_text(case_data: Dict[str, Any]) -> str:
-    parts: List[str] = []
-    for item in _flatten_case_values(case_data):
-        parts.append(_normalise_text(item))
-    return " ".join(part for part in parts if part)
-
-
-def _load_knowledge_entries() -> List[Dict[str, Any]]:
-    entries: List[Dict[str, Any]] = []
-    if not KNOWLEDGE_DIR.exists():
-        return entries
-
-    for path in sorted(KNOWLEDGE_DIR.rglob("*.json")):
-        try:
-            with path.open("r", encoding="utf-8") as handle:
-                payload = json.load(handle)
-        except (json.JSONDecodeError, OSError):
+def _deduplicate(rows: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in sorted(rows, key=lambda item: float(item.get("similarity") or 0), reverse=True):
+        fingerprint = str(row.get("content_hash") or " ".join(str(row.get("content") or "").lower().split()[:40]))
+        if fingerprint in seen:
             continue
-
-        if not isinstance(payload, dict):
-            continue
-
-        content = payload.get("content") or []
-        if not isinstance(content, list):
-            content = [str(content)]
-
-        entry_text = " ".join(str(item) for item in content if item is not None)
-        entries.append({
-            "title": payload.get("title", path.stem),
-            "organisation": payload.get("organisation", "Unknown"),
-            "topic": payload.get("topic", "general"),
-            "source_url": payload.get("source_url", ""),
-            "content": content,
-            "_text": _normalise_text(" ".join([payload.get("title", ""), payload.get("topic", ""), payload.get("organisation", ""), entry_text]))
-        })
-
-    return entries
-
-
-def _score_entry(entry: Dict[str, Any], search_text: str) -> int:
-    score = 0
-    entry_text = entry.get("_text", "")
-
-    for topic_name, keywords in TOPIC_KEYWORDS.items():
-        for keyword in keywords:
-            keyword_norm = _normalise_text(keyword)
-            if not keyword_norm:
-                continue
-            if keyword_norm in entry_text:
-                score += 4
-            if keyword_norm in search_text:
-                score += 2
-
-    title_text = _normalise_text(entry.get("title", ""))
-    topic_text = _normalise_text(entry.get("topic", ""))
-    organisation_text = _normalise_text(entry.get("organisation", ""))
-
-    for token in set(search_text.split()):
-        if token and (token in title_text or token in topic_text or token in organisation_text or token in entry_text):
-            score += 1
-
-    return score
-
-
-def _pick_relevant_content(entry: Dict[str, Any], search_text: str) -> List[str]:
-    content = entry.get("content") or []
-    if not isinstance(content, list):
-        content = [str(content)]
-
-    matched: List[str] = []
-    for item in content:
-        text = _normalise_text(item)
-        if not text:
-            continue
-        if any(keyword in text for keyword in search_text.split() if keyword):
-            matched.append(str(item))
-
-    if matched:
-        return matched[:3]
-
-    return [str(item) for item in content[:2] if item is not None]
-
-
-def retrieve_context(case_data: Dict[str, Any], top_k: int = 5) -> List[Dict[str, Any]]:
-    """Return the most relevant official knowledge entries for a case."""
-    if not isinstance(case_data, dict):
-        return []
-
-    search_text = _build_search_text(case_data)
-    if not search_text.strip():
-        return []
-
-    ranked = []
-    for entry in _load_knowledge_entries():
-        score = _score_entry(entry, search_text)
-        if score <= 0:
-            continue
-        relevant_content = _pick_relevant_content(entry, search_text)
-        ranked.append({
-            "title": entry.get("title"),
-            "organisation": entry.get("organisation"),
-            "topic": entry.get("topic"),
-            "source_url": entry.get("source_url"),
-            "relevant_content": relevant_content,
-            "_score": score,
-        })
-
-    ranked.sort(key=lambda item: item["_score"], reverse=True)
-    results = []
-    for item in ranked[:max(0, int(top_k))]:
-        results.append({
-            "title": item["title"],
-            "organisation": item["organisation"],
-            "topic": item["topic"],
-            "source_url": item["source_url"],
-            "relevant_content": item["relevant_content"],
-        })
-
+        seen.add(fingerprint)
+        results.append(row)
+        if len(results) >= limit:
+            break
     return results
 
-
-def demo_retrieval():
-    case = {
-        "mainIssues": ["pay", "hours"],
-        "pay": {
-            "hourlyPay": 25,
-            "payslipStatus": "no",
-        },
-        "employmentPattern": {
-            "workPattern": "weekend",
-            "overtimeStatus": "yes",
-        },
-    }
-
-    results = retrieve_context(case, top_k=3)
-    for item in results:
-        print(json.dumps(item, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    demo_retrieval()
+def retrieve_context(
+    case_data: dict[str, Any], settings: Settings | None = None,
+    embedding_service: EmbeddingService | None = None,
+    vector_store: SupabaseVectorStore | None = None, rewrite_client: Any | None = None,
+) -> list[dict[str, Any]]:
+    """Retrieve high-quality English evidence for one worker scenario."""
+    settings = settings or Settings.from_env()
+    query = rewrite_search_query(case_to_question(case_data), settings, rewrite_client)
+    started = time.monotonic()
+    embedder = embedding_service or EmbeddingService(settings)
+    store = vector_store or SupabaseVectorStore(settings)
+    rows = store.match(embedder.embed_query(query), settings.match_threshold, settings.match_count * 2)
+    rows = [row for row in rows if float(row.get("similarity") or 0) >= settings.match_threshold]
+    results = _deduplicate(rows, settings.match_count)
+    domains = sorted({urlparse(str(row.get("source_url") or "")).hostname or "" for row in results} - {""})
+    logger.info("RAG retrieval duration_ms=%d matches=%d domains=%s", int((time.monotonic() - started) * 1000), len(results), domains)
+    return results

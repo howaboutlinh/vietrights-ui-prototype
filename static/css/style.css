@@ -1003,6 +1003,18 @@ textarea:focus {
   color: var(--muted);
 }
 
+.source-section {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.result-disclaimer {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 1rem 0 0;
+}
+
 .source-link {
   font-size: 13px;
   color: #2d7d68;
