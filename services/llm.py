@@ -419,47 +419,42 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     model_name = os.getenv("GEMINI_MODEL", os.getenv("GEMINI_CHAT_MODEL", GEMINI_MODEL))
     logger.info("Starting Gemini analysis model=%s", model_name)
 
-    try:
-        response = call_with_retry(lambda timeout_ms: client.models.generate_content(
-            model=model_name,
-            contents=user_prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.3,
-                response_mime_type="application/json",
-                response_schema=_response_schema(),
-                http_options=http_options(timeout_ms),
-            ),
-        ), label='answer')
-    except LLMAuthenticationError:
-        logger.exception("Gemini analysis failed stage=client_setup")
-        raise
-    except errors.APIError as exc:
-        logger.exception("Gemini analysis failed stage=api_request")
-        logger.warning("Gemini API error status=%s code=%s", exc.status, exc.code)
-        error_msg = str(exc).lower()
-        if exc.code in (401, 403) or exc.status in ("UNAUTHENTICATED", "PERMISSION_DENIED") or "unauthenticated" in error_msg:
-            raise LLMAuthenticationError("Authentication failed. Please verify the configured GEMINI_API_KEY.") from None
-        if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",) or "quota" in error_msg:
-            raise LLMQuotaError(stage="gemini_request") from exc
-        if exc.code == 404 or exc.status in ("NOT_FOUND",) or "not found" in error_msg:
-            raise LLMModelNotFoundError(f"Configured model '{model_name}' is not available. Please check GEMINI_MODEL.") from None
-        if exc.code in (408, 504) or exc.status in ("DEADLINE_EXCEEDED",) or "timeout" in error_msg:
-            raise LLMTimeoutError(stage="gemini_request") from exc
-        raise LLMServiceError(stage="gemini_request") from exc
-    except TimeoutError:
-        logger.exception("Gemini analysis failed stage=api_request")
-        raise LLMTimeoutError(stage="gemini_request") from exc
-    except (LLMQuotaError, LLMTimeoutError, LLMServiceError) as exc:
-        logger.exception("Gemini analysis failed stage=api_request")
-        raise
-    except Exception as exc:
-        logger.exception("Gemini analysis failed stage=api_request")
-        exc_str = str(exc).lower()
-        if "timeout" in exc_str:
-            raise LLMTimeoutError(stage="gemini_request") from exc
-        logger.error("Unexpected Gemini error type=%s", type(exc).__name__)
-        raise LLMServiceError(stage="gemini_request") from exc
+    models = [model_name]
+    if GEMINI_FALLBACK_MODEL and GEMINI_FALLBACK_MODEL != model_name:
+        models.append(GEMINI_FALLBACK_MODEL)
+    response = None
+    last_error = None
+    for model_index, current_model in enumerate(models):
+        try:
+            response = _request_gemini_analysis(client, current_model, system_prompt, user_prompt, None)
+            model_name = current_model
+            break
+        except errors.APIError as exc:
+            last_error = exc
+            code = getattr(exc, "code", None)
+            status = getattr(exc, "status", None)
+            logger.warning("Retryable Gemini error: status=%s", status or code)
+            if code in (400, 401, 403) or status in ("INVALID_ARGUMENT", "UNAUTHENTICATED", "PERMISSION_DENIED"):
+                if code in (401, 403) or status in ("UNAUTHENTICATED", "PERMISSION_DENIED"):
+                    raise LLMAuthenticationError(stage="gemini_request") from exc
+                raise LLMServiceError(stage="gemini_request") from exc
+            if model_index + 1 < len(models):
+                logger.info("Switching to secondary Gemini model")
+                continue
+        except (TimeoutError, httpx.TimeoutException) as exc:
+            last_error = exc
+            if model_index + 1 < len(models):
+                logger.info("Switching to secondary Gemini model")
+                continue
+        except LLMBaseError:
+            raise
+        except Exception as exc:
+            last_error = exc
+            if model_index + 1 < len(models):
+                logger.info("Switching to secondary Gemini model")
+                continue
+    if response is None:
+        raise LLMServiceError(stage="gemini_request") from last_error
 
     content = getattr(response, "text", None)
     if not content:

@@ -4,7 +4,7 @@
 2. Create a Render Python Web Service from this repository.
 3. Set build command to `pip install -r requirements.txt`.
 4. Set start command to `gunicorn app:app`.
-5. Add `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.6-flash`, `GEMINI_EMBEDDING_MODEL`, `DATABASE_URL`, `RAG_MATCH_COUNT`, `RAG_MATCH_THRESHOLD`, and `EMBEDDING_DIMENSION` in Render Environment. Remove any old `GEMINI_CHAT_MODEL` override such as `gemini-2.5-flash`. `DATABASE_URL` must be the Supabase Session Pooler URL and uses the psycopg 3 driver (`postgresql+psycopg://`).
+5. Add `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.6-flash`, optional `GEMINI_FALLBACK_MODEL`, `GEMINI_EMBEDDING_MODEL`, `DATABASE_URL`, `RAG_MATCH_COUNT`, `RAG_MATCH_THRESHOLD`, and `EMBEDDING_DIMENSION` in Render Environment. Remove any old `GEMINI_CHAT_MODEL` override such as `gemini-2.5-flash`. `DATABASE_URL` must be the Supabase Session Pooler URL and uses the psycopg 3 driver (`postgresql+psycopg://`).
 6. Deploy and verify `/` and `/analyze`.
 7. Configure the four `KNOWLEDGE_SOURCE_*` values only in the trusted environment used for ingestion.
 8. Run `python scripts/ingest_knowledge.py --dry-run`, review the output, then run the real ingestion command manually.

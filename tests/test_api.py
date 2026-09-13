@@ -10,7 +10,10 @@ from pathlib import Path
 SCENARIO = {"mainIssues": ["pay", "payslip"], "description": "Tôi được trả $15 một giờ bằng tiền mặt và không có payslip.", "language": "vi"}
 
 def test_api_returns_safe_no_evidence_response(monkeypatch):
-    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Official", "source_url": "https://example.gov.au/source",
+        "document_title": "Source", "content": "Evidence.",
+    }])
     monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(
         models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps({
             "summary": "AI analysis with no retrieved evidence.", "issues": [], "evidence": [],
@@ -40,6 +43,32 @@ def test_gemini_is_called_before_fallback_for_empty_retrieval(monkeypatch):
     payload = app.test_client().post("/api/analyze", json=SCENARIO).get_json()
     assert calls == [True]
     assert payload["ai_used"] is True and payload["fallback"] is False
+
+
+def test_primary_model_failure_uses_secondary_gemini_model(monkeypatch):
+    from google.genai import errors
+    calls = []
+    monkeypatch.setenv("GEMINI_MODEL", "primary-model")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "secondary-model")
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Official", "source_url": "https://example.gov.au/source",
+        "document_title": "Source", "content": "Evidence.",
+    }])
+
+    def generate(**kwargs):
+        calls.append(kwargs["model"])
+        if kwargs["model"] == "primary-model":
+            raise errors.APIError(500, {"error": {"code": 500}})
+        return SimpleNamespace(text=json.dumps({
+            "summary": "Secondary AI result [1]", "issues": [], "evidence": [], "next_steps": [],
+            "clarification_questions": [], "risk_level": "medium", "sources": [], "issue_analysis": [],
+        }))
+
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(models=SimpleNamespace(generate_content=generate)))
+    payload = app.test_client().post("/api/analyze", json=SCENARIO).get_json()
+    assert payload["ai_used"] is True
+    assert payload["fallback"] is False
+    assert calls == ["primary-model"] * 3 + ["secondary-model"]
 
 
 def test_unusual_document_combination_is_sent_to_gemini(monkeypatch):
