@@ -30,6 +30,25 @@ function t(keyPath, defaultText = '') {
   return typeof current === 'string' ? current : defaultText;
 }
 
+function segmentGraphemes(text, language = 'vi') {
+  const normalizedText = String(text ?? '').normalize('NFC');
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter(language, { granularity: 'grapheme' });
+    return [...segmenter.segment(normalizedText)].map((item) => item.segment);
+  }
+
+  return normalizedText.match(/\P{Mark}\p{Mark}*|\p{Mark}+/gu) || [];
+}
+
+function normalizeHeadings() {
+  document.querySelectorAll('h1, h2, h3').forEach((heading) => {
+    const normalizedText = heading.textContent.normalize('NFC');
+    if (heading.textContent !== normalizedText) {
+      heading.textContent = normalizedText;
+    }
+  });
+}
+
 /**
  * Load localization dictionary from external UTF-8 JSON file.
  */
@@ -171,6 +190,8 @@ function applyTranslations() {
     const value = t(key, '');
     if (value) node.setAttribute('aria-label', value);
   });
+
+  normalizeHeadings();
 
   const languageToggle = document.getElementById('language-toggle');
   if (languageToggle) {

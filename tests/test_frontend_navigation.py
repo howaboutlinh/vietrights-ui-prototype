@@ -28,6 +28,19 @@ def test_questionnaire_scroll_respects_reduced_motion_and_clears_sources_hash():
     assert "scroll-margin-top: 100px;" in styles
 
 
+def test_heading_text_is_normalized_and_grapheme_safe():
+    source = APP_JS.read_text(encoding="utf-8")
+
+    assert '.normalize(\'NFC\')' in source
+    assert 'new Intl.Segmenter(language, { granularity: \'grapheme\' })' in source
+    assert 'return [...segmenter.segment(normalizedText)].map((item) => item.segment);' in source
+    assert 'normalizedText.match(/\\P{Mark}\\p{Mark}*|\\p{Mark}+/gu) || []' in source
+    assert 'function normalizeHeadings()' in source
+    assert 'document.querySelectorAll(\'h1, h2, h3\')' in source
+    assert 'split(\'\')' not in source
+    assert 'Array.from' not in source
+
+
 def test_pay_frequency_labels_and_dynamic_amount_placeholders_switch_between_languages():
     translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
 

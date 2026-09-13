@@ -228,6 +228,8 @@ img {
   line-height: 0.92;
   margin: 0;
   font-feature-settings: "kern" 1, "liga" 1;
+  font-kerning: normal;
+  word-spacing: normal;
   text-rendering: optimizeLegibility;
 }
 
