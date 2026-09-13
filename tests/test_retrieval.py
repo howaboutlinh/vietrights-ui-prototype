@@ -107,8 +107,17 @@ def test_empty_local_knowledge_folders_do_not_crash(tmp_path):
     assert load_local_knowledge(tmp_path) == []
 
 
-def test_project_local_knowledge_contains_home_affairs_and_safework_sources():
+def test_project_local_knowledge_contains_home_affairs_safework_and_rmwc_sources():
     organisations = {record["source_name"] for record in load_local_knowledge()}
     assert "Department of Home Affairs" in organisations
     assert "SafeWork NSW" in organisations
-    assert "RMWC" not in organisations
+    assert "Refugee and Migrant Workers Centre" in organisations
+
+
+def test_rmwc_knowledge_preserves_pdf_provenance_and_unicode():
+    records = [record for record in load_local_knowledge() if record["source_name"] == "Refugee and Migrant Workers Centre"]
+    assert len(records) == 3
+    assert all(record["source_url"] == "https://migrants.org.au/resources/" for record in records)
+    assert all("rmwc_workplace_rights_vi.pdf" in record["content"] for record in records)
+    assert any("culturally safe" in record["content"] for record in records)
+    assert all("support/referral organisation" in record["section_title"] for record in records)
