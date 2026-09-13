@@ -1,10 +1,11 @@
 """VietRights Flask application entry point."""
 
 from flask import Flask, current_app, jsonify, render_template, request
+import os
 
 from services.config import ConfigurationError, Settings, sqlalchemy_database_url
 from services.database import db
-from services.llm import LLMBaseError, LLMQuotaError, LLMServiceError, LLMTimeoutError, analyze_case
+from services.llm import LLMAuthenticationError, LLMBaseError, LLMInvalidResponseError, LLMQuotaError, LLMServiceError, LLMTimeoutError, analyze_case
 from services.retry import request_budget
 
 
@@ -13,67 +14,13 @@ def home():
     return render_template("index.html")
 
 
-TRUSTED_FALLBACK_SOURCES = [
-    {"number": 1, "title": "Fair Work Ombudsman", "organisation": "Fair Work Ombudsman", "url": "https://www.fairwork.gov.au/"},
-    {"number": 2, "title": "Department of Home Affairs", "organisation": "Department of Home Affairs", "url": "https://www.homeaffairs.gov.au/"},
-    {"number": 3, "title": "SafeWork NSW", "organisation": "SafeWork NSW", "url": "https://www.safework.nsw.gov.au/"},
-    {"number": 4, "title": "RMWC Migrant Workers Hub", "organisation": "RMWC", "url": "https://unionsnsw.org.au/your-rights/migrant-workers/"},
-]
-
-
-def fallback_response(case_data):
-    """Return safe bilingual guidance when Gemini is temporarily unavailable."""
-    language = "en" if str(case_data.get("language") or "vi").lower() == "en" else "vi"
-    issues = {str(issue).strip() for issue in case_data.get("mainIssues") or []}
-    if language == "vi":
-        rules = {
-            "pay": "Ghi lại giờ làm, các khoản thanh toán và kiểm tra mức lương tối thiểu phù hợp với Fair Work Ombudsman.",
-            "payslip": "Giữ hồ sơ ngân hàng và tin nhắn liên quan, đồng thời liên hệ Fair Work Ombudsman.",
-            "hours": "Ghi lại roster, ca làm, giờ làm thêm và thời gian nghỉ.",
-            "visa": "Người lao động di trú vẫn có quyền tại nơi làm việc. Xem thông tin từ Home Affairs.",
-            "safety": "Nếu có nguy hiểm ngay lập tức, gọi 000; nếu không khẩn cấp, liên hệ SafeWork NSW.",
-            "harassment": "Giữ lại tin nhắn và tìm hỗ trợ phù hợp.",
-            "other": "Ghi lại sự việc, giữ tài liệu liên quan và tìm hỗ trợ phù hợp.",
-        }
-        summary = "Gemini đang tạm thời không khả dụng. Dưới đây là hướng dẫn dự phòng từ các nguồn chính thức."
-    else:
-        rules = {
-            "pay": "Record hours and payments, and check the applicable minimum rate with the Fair Work Ombudsman.",
-            "payslip": "Preserve bank records and messages, and contact the Fair Work Ombudsman.",
-            "hours": "Record rosters, shifts, overtime and breaks.",
-            "visa": "Migrant workers still have workplace rights. Review information from Home Affairs.",
-            "safety": "If there is immediate danger call 000; otherwise contact SafeWork NSW.",
-            "harassment": "Preserve messages and seek appropriate support.",
-            "other": "Record what happened, preserve relevant documents and seek appropriate support.",
-        }
-        summary = "Gemini is temporarily unavailable. The following is fallback guidance from official sources."
-    issue_guidance = [rules[issue] for issue in issues if issue in rules]
-    issue_analysis = [{
-        "issue": issue,
-        "fact_from_user": "Submitted intake facts",
-        "why_it_may_be_unfair": guidance,
-        "applicable_law_or_rule": "See the official source below; exact rule requires further facts.",
-        "section_or_clause": "",
-        "comparison_or_calculation": "",
-        "evidence_needed": [],
-        "confidence": "low",
-        "missing_information": [],
-    } for issue, guidance in zip(issues, issue_guidance)]
-    return {
-        "status": "success",
-        "fallback": True,
-        "summary": summary,
-        "answer": summary,
-        "issues": issue_guidance,
-        "issue_analysis": issue_analysis,
-        "evidence": [],
-        "next_steps": [],
-        "clarification_questions": [],
-        "risk_level": "medium",
-        "sources": TRUSTED_FALLBACK_SOURCES,
-        "content_format": "markdown",
-        "retrieval": {"used": True, "result_count": 0},
-    }
+def diagnostic_error_response(status_code, stage):
+    return jsonify({
+        "success": False,
+        "error": "AI_ANALYSIS_FAILED",
+        "stage": stage,
+        "message": "The AI analysis service is currently unavailable.",
+    }), status_code
 
 
 def analyze():
@@ -82,12 +29,26 @@ def analyze():
     if not isinstance(data, dict):
         return jsonify({"status": "error", "error_code": "invalid_payload", "error": "Invalid JSON payload."}), 400
     try:
+        current_app.logger.info(
+            "Starting Gemini analysis model=%s api_key_configured=%s",
+            os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash")),
+            bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
+        )
         with request_budget():
             result = analyze_case(data)
+        if result.get("ai_used") is True:
+            current_app.logger.info("Gemini analysis succeeded")
         return jsonify({"status": "success", **result})
-    except (LLMQuotaError, LLMTimeoutError, LLMServiceError):
-        current_app.logger.warning("Gemini temporarily unavailable; returning fallback guidance")
-        return jsonify(fallback_response(data)), 200
+    except LLMAuthenticationError as exc:
+        current_app.logger.exception("Gemini analysis failed at stage: %s", exc.stage)
+        return diagnostic_error_response(503, "client_setup")
+    except (LLMQuotaError, LLMTimeoutError, LLMServiceError) as exc:
+        current_app.logger.exception("Gemini analysis failed at stage: %s", exc.stage)
+        return diagnostic_error_response(503, "gemini_request")
+    except LLMInvalidResponseError as exc:
+        current_app.logger.exception("Gemini analysis failed at stage: %s", exc.stage)
+        stage = exc.stage if exc.stage in {"response_parsing", "schema_validation"} else "unknown"
+        return diagnostic_error_response(500, stage)
     except LLMBaseError as exc:
         current_app.logger.warning("Controlled LLM error code=%s", exc.error_code)
         return jsonify({"status": "error", "error_code": exc.error_code, "error": exc.safe_message}), exc.status_code
@@ -102,11 +63,12 @@ def analyze():
         current_app.logger.warning("Input validation failed")
         return jsonify({"status": "error", "error_code": "invalid_input", "error": str(exc)}), 400
     except Exception:
-        current_app.logger.error("Unhandled server error")
+        current_app.logger.exception("Gemini analysis failed at stage: unknown")
         return jsonify({
-            "status": "error",
-            "error_code": "internal_server_error",
-            "error": "An unexpected server error occurred.",
+            "success": False,
+            "error": "AI_ANALYSIS_FAILED",
+            "stage": "unknown",
+            "message": "The AI analysis service is currently unavailable.",
         }), 500
 
 
@@ -130,6 +92,7 @@ def create_app() -> Flask:
         db.init_app(flask_app)
     flask_app.add_url_rule("/", "home", home, methods=["GET"])
     flask_app.add_url_rule("/analyze", "analyze", analyze, methods=["POST"])
+    flask_app.add_url_rule("/api/analyze", "api_analyze", analyze, methods=["POST"])
     return flask_app
 
 

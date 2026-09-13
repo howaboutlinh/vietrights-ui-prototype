@@ -38,32 +38,33 @@ CHOICE_FIELDS = (
 class LLMBaseError(Exception):
     """Base exception for LLM operations with safe public message and error code."""
 
-    def __init__(self, message: str, error_code: str = "llm_error", status_code: int = 500):
+    def __init__(self, message: str, error_code: str = "llm_error", status_code: int = 500, stage: str = "unknown"):
         super().__init__(message)
         self.error_code = error_code
         self.status_code = status_code
         self.safe_message = message
+        self.stage = stage
 
 
 class LLMAuthenticationError(LLMBaseError):
     """Raised when Gemini authentication fails or API key is missing/invalid."""
 
-    def __init__(self, message: str = "Authentication failed. Please verify the configured GEMINI_API_KEY."):
-        super().__init__(message, error_code="authentication_error", status_code=401)
+    def __init__(self, message: str = "Authentication failed. Please verify the configured GEMINI_API_KEY.", stage: str = "client_setup"):
+        super().__init__(message, error_code="authentication_error", status_code=401, stage=stage)
 
 
 class LLMQuotaError(LLMBaseError):
     """Raised when Gemini API rate limit or quota is exceeded."""
 
-    def __init__(self, message: str = "API rate limit or quota exceeded. Please try again later."):
-        super().__init__(message, error_code="quota_exceeded", status_code=429)
+    def __init__(self, message: str = "API rate limit or quota exceeded. Please try again later.", stage: str = "gemini_request"):
+        super().__init__(message, error_code="quota_exceeded", status_code=429, stage=stage)
 
 
 class LLMTimeoutError(LLMBaseError):
     """Raised when request to Gemini API times out."""
 
-    def __init__(self, message: str = "The AI model request timed out. Please try again."):
-        super().__init__(message, error_code="request_timeout", status_code=504)
+    def __init__(self, message: str = "The AI model request timed out. Please try again.", stage: str = "gemini_request"):
+        super().__init__(message, error_code="request_timeout", status_code=504, stage=stage)
 
 
 class LLMModelNotFoundError(LLMBaseError):
@@ -76,15 +77,15 @@ class LLMModelNotFoundError(LLMBaseError):
 class LLMInvalidResponseError(LLMBaseError):
     """Raised when model response is malformed or violates expected schema."""
 
-    def __init__(self, message: str = "The model returned an unexpected or malformed response."):
-        super().__init__(message, error_code="invalid_model_response", status_code=502)
+    def __init__(self, message: str = "The model returned an unexpected or malformed response.", stage: str = "response_parsing"):
+        super().__init__(message, error_code="invalid_model_response", status_code=502, stage=stage)
 
 
 class LLMServiceError(LLMBaseError):
     """Raised when general upstream Gemini API or network communication fails."""
 
-    def __init__(self, message: str = "An error occurred while communicating with the AI service."):
-        super().__init__(message, error_code="service_error", status_code=502)
+    def __init__(self, message: str = "An error occurred while communicating with the AI service.", stage: str = "gemini_request"):
+        super().__init__(message, error_code="service_error", status_code=502, stage=stage)
 
 
 def _coerce_list(value: Any) -> List[str]:
@@ -220,6 +221,7 @@ def _response_schema() -> Dict[str, Any]:
             "clarification_questions",
             "risk_level",
             "sources",
+            "issue_analysis",
         ],
     }
 
@@ -229,7 +231,9 @@ def _citations_are_grounded(values: list[str], source_count: int) -> bool:
     if not values:
         return True
     if source_count < 1:
-        return False
+        # A no-evidence response may still be generated, but it must not claim
+        # citations that the server cannot attach to an official source.
+        return not any(re.search(r"\[(\d+)\]", value) for value in values)
     for value in values:
         references = [int(number) for number in re.findall(r"\[(\d+)\]", value)]
         if not references or any(number < 1 or number > source_count for number in references):
@@ -305,6 +309,7 @@ def _fallback_response(case_data: Dict[str, Any], retrieved_context: List[Dict[s
     return {
         "answer": summary,
         "summary": summary,
+        "ai_used": False,
         "issues": issues_text,
         "evidence": evidence,
         "next_steps": next_steps,
@@ -313,7 +318,7 @@ def _fallback_response(case_data: Dict[str, Any], retrieved_context: List[Dict[s
         "risk_level": "high" if "safety" in issues else "medium",
         "sources": sources,
         "content_format": "markdown",
-        "retrieval": {"used": True, "result_count": len(sources)},
+        "retrieval": {"used": True, "result_count": len(source_refs)},
         "fallback": True,
         "fallback_reason": reason,
     }
@@ -357,35 +362,25 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         language = "vi"
 
     try:
+        client = _get_gemini_client()
+    except LLMAuthenticationError:
+        logger.exception("Gemini analysis failed stage=client_setup")
+        raise
+
+    try:
         retrieved_context = retrieve_context(case_data)
     except errors.APIError as exc:
         if exc.code in (408, 504) or exc.status in ("DEADLINE_EXCEEDED",):
-            return _fallback_response(case_data, [], language, "request_timeout")
+            raise LLMTimeoutError(stage="gemini_request") from exc
         if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",):
-            return _fallback_response(case_data, [], language, "quota_exceeded")
-        return _fallback_response(case_data, [], language, "service_error")
-    except (TimeoutError, httpx.TimeoutException):
-        return _fallback_response(case_data, [], language, "request_timeout")
+            raise LLMQuotaError(stage="gemini_request") from exc
+        raise LLMServiceError(stage="gemini_request") from exc
+    except (TimeoutError, httpx.TimeoutException) as exc:
+        raise LLMTimeoutError(stage="gemini_request") from exc
     except httpx.TransportError:
-        return _fallback_response(case_data, [], language, "service_error")
+        raise LLMServiceError(stage="gemini_request") from exc
     except LLMBaseError as exc:
-        return _fallback_response(case_data, [], language, exc.error_code)
-    if not retrieved_context:
-        message = (
-            "Chưa tìm thấy thông tin chính thức đủ phù hợp để trả lời tình huống này. "
-            "Bạn nên kiểm tra trực tiếp với Fair Work Ombudsman hoặc dịch vụ hỗ trợ pháp lý phù hợp."
-            if language == "vi" else
-            "No sufficiently relevant official information was found for this situation. "
-            "Please check directly with the Fair Work Ombudsman or an appropriate legal support service."
-        )
-        return {
-            "answer": message,
-            "summary": message,
-            "issues": [], "evidence": [], "next_steps": [], "clarification_questions": [],
-            "risk_level": "medium", "sources": [],
-            "content_format": "markdown",
-            "retrieval": {"used": True, "result_count": 0},
-        }
+        raise
     formatted_context = _format_context_for_prompt(retrieved_context)
     source_refs = [
         {
@@ -413,8 +408,8 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         formatted_context=formatted_context
     )
 
-    client = _get_gemini_client()
     model_name = os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", GEMINI_MODEL))
+    logger.info("Starting Gemini analysis model=%s", model_name)
 
     try:
         response = call_with_retry(lambda timeout_ms: client.models.generate_content(
@@ -428,44 +423,58 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
                 http_options=http_options(timeout_ms),
             ),
         ), label='answer')
+    except LLMAuthenticationError:
+        logger.exception("Gemini analysis failed stage=client_setup")
+        raise
     except errors.APIError as exc:
+        logger.exception("Gemini analysis failed stage=api_request")
         logger.warning("Gemini API error status=%s code=%s", exc.status, exc.code)
         error_msg = str(exc).lower()
         if exc.code in (401, 403) or exc.status in ("UNAUTHENTICATED", "PERMISSION_DENIED") or "unauthenticated" in error_msg:
             raise LLMAuthenticationError("Authentication failed. Please verify the configured GEMINI_API_KEY.") from None
         if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",) or "quota" in error_msg:
-            return _fallback_response(case_data, retrieved_context, language, "quota_exceeded")
+            raise LLMQuotaError(stage="gemini_request") from exc
         if exc.code == 404 or exc.status in ("NOT_FOUND",) or "not found" in error_msg:
             raise LLMModelNotFoundError(f"Configured model '{model_name}' is not available. Please check GEMINI_MODEL.") from None
         if exc.code in (408, 504) or exc.status in ("DEADLINE_EXCEEDED",) or "timeout" in error_msg:
-            return _fallback_response(case_data, retrieved_context, language, "request_timeout")
-        return _fallback_response(case_data, retrieved_context, language, "service_error")
+            raise LLMTimeoutError(stage="gemini_request") from exc
+        raise LLMServiceError(stage="gemini_request") from exc
     except TimeoutError:
-        return _fallback_response(case_data, retrieved_context, language, "request_timeout")
+        logger.exception("Gemini analysis failed stage=api_request")
+        raise LLMTimeoutError(stage="gemini_request") from exc
     except (LLMQuotaError, LLMTimeoutError, LLMServiceError) as exc:
-        return _fallback_response(case_data, retrieved_context, language, exc.error_code)
+        logger.exception("Gemini analysis failed stage=api_request")
+        raise
     except Exception as exc:
+        logger.exception("Gemini analysis failed stage=api_request")
         exc_str = str(exc).lower()
         if "timeout" in exc_str:
-            return _fallback_response(case_data, retrieved_context, language, "request_timeout")
+            raise LLMTimeoutError(stage="gemini_request") from exc
         logger.error("Unexpected Gemini error type=%s", type(exc).__name__)
-        return _fallback_response(case_data, retrieved_context, language, "service_error")
+        raise LLMServiceError(stage="gemini_request") from exc
 
     content = getattr(response, "text", None)
     if not content:
         try:
             content = response.candidates[0].content.parts[0].text
         except Exception:
+            logger.exception("Gemini analysis failed stage=response_parsing")
             content = ""
 
     if not content:
-        raise LLMInvalidResponseError("Gemini returned no usable content.")
+        logger.error("Gemini analysis failed stage=response_parsing reason=empty_response")
+        raise LLMInvalidResponseError(stage="response_parsing") from None
 
-    parsed = _safe_parse_json(content)
+    try:
+        parsed = _safe_parse_json(content)
+    except LLMInvalidResponseError:
+        logger.exception("Gemini analysis failed stage=response_parsing")
+        raise LLMInvalidResponseError(stage="response_parsing") from None
     required = ["summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources", "issue_analysis"]
     for key in required:
         if key not in parsed:
-            raise LLMInvalidResponseError(f"Missing required field in model response: {key}")
+            logger.exception("Gemini analysis failed stage=schema_validation")
+            raise LLMInvalidResponseError(stage="schema_validation") from None
 
     result = {
         "summary": str(parsed.get("summary", "")).strip(),
@@ -504,11 +513,16 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
 
     claims = [result["summary"], *result["issues"], *result["next_steps"]]
     if not _citations_are_grounded([value for value in claims if value], len(source_refs)):
-        raise LLMInvalidResponseError("The model response contained an unsupported or invalid citation.")
+        logger.error("Gemini analysis failed stage=schema_validation reason=ungrounded_citation")
+        raise LLMInvalidResponseError(stage="schema_validation") from None
 
     result["sources"] = [item for item in source_refs if str(item.get("url") or "").startswith(("http://", "https://"))]
     result["answer"] = result["summary"]
+    result["ai_used"] = True
+    result["fallback"] = False
     result["content_format"] = "markdown"
     result["retrieval"] = {"used": True, "result_count": len(result["sources"])}
+
+    logger.info("Gemini analysis succeeded model=%s", model_name)
 
     return result

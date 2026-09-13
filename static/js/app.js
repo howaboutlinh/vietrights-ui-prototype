@@ -612,10 +612,6 @@ function renderResult(result) {
   const issueAnalysis = document.getElementById('result-issue-analysis');
   const sources = document.getElementById('result-sources');
   const title = document.getElementById('result-title');
-  const fallbackNotice = document.getElementById('fallback-notice');
-
-  if (fallbackNotice) fallbackNotice.hidden = result?.fallback !== true;
-
   if (title) {
     title.textContent = t('result.title', 'Check result');
   }
@@ -726,7 +722,7 @@ function renderResult(result) {
 
 async function sendCaseToBackend(signal) {
   const payload = collectCaseData();
-  const response = await fetch('/analyze', {
+  const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -742,8 +738,11 @@ async function sendCaseToBackend(signal) {
   }
 
   if (!response.ok || responseData.status === 'error') {
-    const errorMsg = t(`error.${responseData?.error_code}`, t('error.unable_to_analyze', 'Unable to analyze case.'));
-    throw new Error(errorMsg);
+    const error = new Error(responseData?.message || t('error.unable_to_analyze', 'Unable to analyze case.'));
+    error.httpStatus = response.status;
+    error.errorCode = responseData?.error || responseData?.error_code || 'AI_ANALYSIS_FAILED';
+    error.failureStage = responseData?.stage || 'unknown';
+    throw error;
   }
 
   return responseData;
@@ -757,11 +756,13 @@ async function runAnalysis() {
   const resultContent = document.getElementById('result-content');
   const errorBox = document.getElementById('analysis-error');
   const errorMessage = document.getElementById('analysis-error-message');
+  const errorDiagnostic = document.getElementById('analysis-error-diagnostic');
   const errorTitle = document.getElementById('analysis-error-title');
 
   showStep(5, { scroll: true });
   setLoadingState(true);
   if (errorBox) errorBox.hidden = true;
+  if (errorDiagnostic) errorDiagnostic.hidden = true;
   if (resultContent) resultContent.hidden = true;
 
   isAnalyzing = true;
@@ -801,6 +802,10 @@ async function runAnalysis() {
         errorTitle.textContent = t('error.title', 'Analysis could not be completed');
       }
       errorMessage.textContent = displayError;
+      if (errorDiagnostic) {
+        errorDiagnostic.textContent = `HTTP ${error.httpStatus || 500} · ${error.errorCode || 'AI_ANALYSIS_FAILED'} · ${error.failureStage || 'unknown'}`;
+        errorDiagnostic.hidden = false;
+      }
       errorBox.hidden = false;
     }
   } finally {

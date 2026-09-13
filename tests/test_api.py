@@ -11,11 +11,60 @@ SCENARIO = {"mainIssues": ["pay", "payslip"], "description": "Tôi được tr�
 
 def test_api_returns_safe_no_evidence_response(monkeypatch):
     monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(
+        models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps({
+            "summary": "AI analysis with no retrieved evidence.", "issues": [], "evidence": [],
+            "next_steps": [], "clarification_questions": [], "risk_level": "medium",
+            "sources": [], "issue_analysis": [],
+        })))
+    ))
     response = app.test_client().post("/analyze", json=SCENARIO)
     payload = response.get_json()
     assert response.status_code == 200
     assert payload["answer"] and payload["sources"] == []
-    assert payload["retrieval"] == {"used": True, "result_count": 0}
+    assert payload["ai_used"] is True and payload["fallback"] is False
+
+
+def test_gemini_is_called_before_fallback_for_empty_retrieval(monkeypatch):
+    calls = []
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Official", "source_url": "https://example.gov.au/source",
+        "document_title": "Source", "content": "Evidence.",
+    }])
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(
+        models=SimpleNamespace(generate_content=lambda **_: (calls.append(True) or SimpleNamespace(text=json.dumps({
+            "summary": "AI result [1]", "issues": ["pay [1]"], "evidence": [], "next_steps": [],
+            "clarification_questions": [], "risk_level": "medium", "sources": [], "issue_analysis": [],
+        }))))
+    ))
+    payload = app.test_client().post("/api/analyze", json=SCENARIO).get_json()
+    assert calls == [True]
+    assert payload["ai_used"] is True and payload["fallback"] is False
+
+
+def test_unusual_document_combination_is_sent_to_gemini(monkeypatch):
+    calls = []
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Official", "source_url": "https://example.gov.au/source",
+        "document_title": "Source", "content": "Evidence.",
+    }])
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(
+        models=SimpleNamespace(generate_content=lambda **kwargs: (calls.append(kwargs["contents"]) or SimpleNamespace(text=json.dumps({
+            "summary": "AI result [1]", "issues": ["payslip [1]"], "evidence": [], "next_steps": [],
+            "clarification_questions": [], "risk_level": "medium", "sources": [], "issue_analysis": [],
+        }))))
+    ))
+    payload = app.test_client().post("/api/analyze", json={**SCENARIO, "documentAvailability": "payslip_only", "has_contract": False, "has_payslip": True}).get_json()
+    assert len(calls) == 1
+    assert payload["fallback"] is False
+
+
+def test_missing_api_key_returns_client_setup_diagnostic_error(monkeypatch):
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: (_ for _ in ()).throw(services.llm.LLMAuthenticationError()))
+    payload = app.test_client().post("/api/analyze", json=SCENARIO).get_json()
+    assert payload["success"] is False
+    assert payload["error"] == "AI_ANALYSIS_FAILED"
+    assert payload["stage"] == "client_setup"
 
 def test_frontend_response_does_not_expose_secrets(monkeypatch):
     monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [])
@@ -89,16 +138,13 @@ def test_gemini_controlled_errors_return_http_200_fallback(monkeypatch, error_ty
     monkeypatch.setattr(app_module, "analyze_case", lambda _data: (_ for _ in ()).throw(error_type()))
     response = app.test_client().post("/analyze", json=SCENARIO)
     payload = response.get_json()
-    assert response.status_code == 200
-    assert payload["status"] == "success"
-    assert payload["fallback"] is True
-    assert payload["risk_level"] == "medium"
-    assert payload["retrieval"] == {"used": True, "result_count": 0}
-    assert {"answer", "summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources", "content_format", "retrieval"}.issubset(payload)
-    assert all(source["url"] in {
-        "https://www.fairwork.gov.au/", "https://www.homeaffairs.gov.au/",
-        "https://www.safework.nsw.gov.au/", "https://unionsnsw.org.au/your-rights/migrant-workers/",
-    } for source in payload["sources"])
+    assert response.status_code == 503
+    assert payload == {
+        "success": False,
+        "error": "AI_ANALYSIS_FAILED",
+        "stage": "gemini_request",
+        "message": "The AI analysis service is currently unavailable.",
+    }
 
 
 def test_permanent_429_returns_fallback_with_http_200(monkeypatch):
@@ -115,11 +161,10 @@ def test_permanent_429_returns_fallback_with_http_200(monkeypatch):
 
     response = app.test_client().post("/analyze", json=SCENARIO)
     payload = response.get_json()
-    assert response.status_code == 200
-    assert payload["fallback"] is True
-    assert payload["fallback_reason"] == "quota_exceeded"
-    assert {"answer", "summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources", "content_format", "retrieval"}.issubset(payload)
-    assert payload["sources"][0]["url"] == "https://fairwork.gov.au/pay"
+    assert response.status_code == 503
+    assert payload["success"] is False
+    assert payload["error"] == "AI_ANALYSIS_FAILED"
+    assert payload["stage"] == "gemini_request"
 
 
 def test_fallback_source_urls_are_restricted_to_retrieved_entries(monkeypatch):
@@ -134,7 +179,8 @@ def test_fallback_source_urls_are_restricted_to_retrieved_entries(monkeypatch):
         models=SimpleNamespace(generate_content=lambda **_: (_ for _ in ()).throw(errors.APIError(429, {"error": {"code": 429}})))
     ))
     payload = app.test_client().post("/analyze", json=SCENARIO).get_json()
-    assert [source["url"] for source in payload["sources"]] == ["https://retrieved.example/guide"]
+    assert payload["success"] is False
+    assert payload["stage"] == "gemini_request"
 
 
 def test_fallback_uses_trusted_organisations_when_no_entries_are_retrieved(monkeypatch):
@@ -143,10 +189,8 @@ def test_fallback_uses_trusted_organisations_when_no_entries_are_retrieved(monke
         errors.APIError(429, {"error": {"code": 429}})
     ))
     payload = app.test_client().post("/analyze", json=SCENARIO).get_json()
-    assert payload["fallback"] is True
-    assert {source["organisation"] for source in payload["sources"]} == {
-        "Fair Work Ombudsman", "Department of Home Affairs", "SafeWork NSW", "RMWC"
-    }
+    assert payload["success"] is False
+    assert payload["stage"] == "gemini_request"
 
 
 def test_successful_analysis_keeps_detailed_scenario_specific_output(monkeypatch):

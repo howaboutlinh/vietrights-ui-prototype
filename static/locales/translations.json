@@ -159,7 +159,7 @@
     "btn_retry": "Thử lại",
     "lang_toggle": "VI / EN",
     "result_eyebrow": "HƯỚNG DẪN DÀNH CHO BẠN",
-    "result_loading": "Đang kiểm tra tình huống của bạn...",
+    "result_loading": "AI đang phân tích tình huống của bạn…",
     "result_risk_label": "Mức độ cần chú ý",
     "result_summary_heading": "Tóm tắt",
     "result_issues_heading": "Vấn đề cần xem xét",
@@ -188,7 +188,6 @@
       "coercion": "Ép buộc hoặc đe doạ",
       "other": "Vấn đề khác"
     },
-    "fallback_notice": "AI đang tạm thời gián đoạn. VietRights đang hiển thị hướng dẫn dự phòng từ các nguồn chính thức.",
     "sidebar_head_eyebrow": "HỒ SƠ TÌNH HUỐNG",
     "sidebar_head_title": "Hồ sơ tình huống",
     "sidebar_head_desc": "VietRights chỉ hỏi những thông tin cần thiết để hiểu vấn đề của bạn.",
@@ -435,7 +434,7 @@
     "btn_retry": "Try again",
     "lang_toggle": "EN / VI",
     "result_eyebrow": "GUIDANCE FOR YOU",
-    "result_loading": "Checking your situation...",
+    "result_loading": "AI is analyzing your situation…",
     "result_risk_label": "Attention level",
     "result_summary_heading": "Summary",
     "result_issues_heading": "Issues to consider",
@@ -464,7 +463,6 @@
       "coercion": "Coercion or threats",
       "other": "Other issue"
     },
-    "fallback_notice": "AI is temporarily unavailable. VietRights is showing fallback guidance from official sources.",
     "sidebar_head_eyebrow": "CASE PROFILE",
     "sidebar_head_title": "Case profile",
     "sidebar_head_desc": "VietRights only asks for information necessary to understand your situation.",
