@@ -67,6 +67,19 @@ def test_analysis_submission_is_blocked_while_request_is_active():
     assert "isAnalyzing = true;" in source
 
 
+def test_issue_cards_use_localized_labels_and_humanize_unknown_types():
+    source = APP_JS.read_text(encoding="utf-8")
+    translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
+
+    assert "humanizeIssueType(item.issue)" in source
+    assert "['result_issue_fact', item.fact_from_user]" in source
+    assert "result.issue_fact" not in source
+    assert translations["vi"]["issue_types"]["pay"] == "Tiền lương và thanh toán"
+    assert translations["en"]["issue_types"]["pay"] == "Pay and wages"
+    assert "issue_types" in translations["vi"] and "issue_types" in translations["en"]
+    assert "replace(/[_-]+/g, ' ')" in source
+
+
 def test_pay_frequency_labels_and_dynamic_amount_placeholders_switch_between_languages():
     translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
 
@@ -89,3 +102,20 @@ def test_pay_frequency_labels_and_dynamic_amount_placeholders_switch_between_lan
     assert "pay_frequency_note" not in translations["vi"]
     assert "pay_frequency_note" not in translations["en"]
     assert "pay_amount_placeholders.${value}" in APP_JS.read_text(encoding="utf-8")
+
+
+def test_contract_and_payslip_choices_map_to_independent_nullable_flags():
+    source = APP_JS.read_text(encoding="utf-8")
+    template = (Path(__file__).parents[1] / "templates" / "index.html").read_text(encoding="utf-8")
+    translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
+
+    for value in ("both", "payslip_only", "contract_only", "neither", "unsure"):
+        assert f'value="{value}"' in template
+    assert "has_contract: documentStatus.hasContract" in source
+    assert "has_payslip: documentStatus.hasPayslip" in source
+    assert "payslip_only: { hasContract: false, hasPayslip: true }" in source
+    assert "contract_only: { hasContract: true, hasPayslip: false }" in source
+    assert "neither: { hasContract: false, hasPayslip: false }" in source
+    assert "unsure: { hasContract: null, hasPayslip: null }" in source
+    assert translations["vi"]["opt_docs_payslip_only"] == "Không có hợp đồng nhưng có payslip"
+    assert translations["en"]["opt_docs_contract_only"] == "I have a contract but no payslips"

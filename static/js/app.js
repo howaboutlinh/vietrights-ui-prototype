@@ -30,6 +30,15 @@ function t(keyPath, defaultText = '') {
   return typeof current === 'string' ? current : defaultText;
 }
 
+function humanizeIssueType(issueType) {
+  const normalized = String(issueType || '').trim().toLowerCase();
+  const translated = t(`issue_types.${normalized}`, '');
+  if (translated) return translated;
+  return normalized
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase()) || t('result_issue_default', 'Issue');
+}
+
 function segmentGraphemes(text, language = 'vi') {
   const normalizedText = String(text ?? '').normalize('NFC');
   if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
@@ -117,7 +126,7 @@ function updateConditionalFields() {
   const employmentDocWrap = document.getElementById('employment-doc-wrap');
   const employmentDocType = document.getElementById('employment-doc-type');
   if (documents && employmentDocWrap && employmentDocType) {
-    const shouldShow = ['both', 'no_contract', 'no_payslip'].includes((documents.value || '').trim());
+    const shouldShow = ['both', 'contract_only'].includes((documents.value || '').trim());
     employmentDocWrap.hidden = !shouldShow;
     if (!shouldShow) {
       employmentDocType.value = 'unknown';
@@ -391,7 +400,7 @@ function validateStep(step) {
       showFieldError('documents', t('validation.documents', 'Please indicate contract/payslip availability.'));
       return false;
     }
-    const shouldRequireEmploymentDoc = ['both', 'no_contract', 'no_payslip'].includes(documents);
+    const shouldRequireEmploymentDoc = ['both', 'contract_only'].includes(documents);
     if (shouldRequireEmploymentDoc && !employmentDoc) {
       showFieldError('employment-doc-type', t('validation.employment_doc_type', 'Please select employment type on documents.'));
       return false;
@@ -480,7 +489,14 @@ function collectCaseData() {
   const workPattern = getTextValue('work-pattern');
   const paidLeave = getTextValue('paid-leave');
   const documents = getTextValue('documents');
-  const employmentDocType = ['both', 'no_contract', 'no_payslip'].includes(documents)
+  const documentStatus = {
+    both: { hasContract: true, hasPayslip: true },
+    payslip_only: { hasContract: false, hasPayslip: true },
+    contract_only: { hasContract: true, hasPayslip: false },
+    neither: { hasContract: false, hasPayslip: false },
+    unsure: { hasContract: null, hasPayslip: null },
+  }[documents] || { hasContract: null, hasPayslip: null };
+  const employmentDocType = ['both', 'contract_only'].includes(documents)
     ? (getTextValue('employment-doc-type') || 'unknown')
     : 'unknown';
   const payBasis = getTextValue('pay-basis');
@@ -513,6 +529,8 @@ function collectCaseData() {
         ? false
         : paidLeave,
     documentAvailability: documents,
+    has_contract: documentStatus.hasContract,
+    has_payslip: documentStatus.hasPayslip,
     employmentTypeOnDocuments: employmentDocType,
     pay: {
       payBasis,
@@ -633,15 +651,15 @@ function renderResult(result) {
       const card = document.createElement('article');
       card.className = 'result-card issue-analysis-card';
       const heading = document.createElement('h4');
-      heading.textContent = item.issue || t('result.issue_default', 'Issue');
+      heading.textContent = humanizeIssueType(item.issue);
       card.appendChild(heading);
       const fields = [
-        ['result.issue_fact', item.fact_from_user],
-        ['result.issue_why_unfair', item.why_it_may_be_unfair],
-        ['result.issue_law', [item.applicable_law_or_rule, item.section_or_clause].filter(Boolean).join(' · ')],
-        ['result.issue_calculation', item.comparison_or_calculation],
-        ['result.issue_evidence', (item.evidence_needed || []).join(' ')],
-        ['result.issue_missing', (item.missing_information || []).join(' ')],
+        ['result_issue_fact', item.fact_from_user],
+        ['result_issue_why_unfair', item.why_it_may_be_unfair],
+        ['result_issue_law', [item.applicable_law_or_rule, item.section_or_clause].filter(Boolean).join(' · ')],
+        ['result_issue_calculation', item.comparison_or_calculation],
+        ['result_issue_evidence', (item.evidence_needed || []).join(' ')],
+        ['result_issue_missing', (item.missing_information || []).join(' ')],
       ];
       fields.filter(([, value]) => value).forEach(([key, value]) => {
         const paragraph = document.createElement('p');

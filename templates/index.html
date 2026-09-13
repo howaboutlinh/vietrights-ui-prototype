@@ -324,11 +324,11 @@
               <label for="documents" data-i18n="step2_docs_label">Bạn có hợp đồng hoặc payslip để kiểm tra không?</label>
               <select id="documents">
                 <option value="" disabled selected hidden data-i18n="opt_select">Chọn</option>
-                <option value="both" data-i18n="opt_docs_both">Có cả hai</option>
-                <option value="no_contract" data-i18n="opt_docs_no_contract">Không có hợp đồng</option>
-                <option value="no_payslip" data-i18n="opt_docs_no_payslip">Không có payslip</option>
-                <option value="none" data-i18n="opt_docs_none">Không có cả hai</option>
-                <option value="unknown" data-i18n="opt_docs_unknown">Không chắc</option>
+                <option value="both" data-i18n="opt_docs_both">Có cả hợp đồng và payslip</option>
+                <option value="payslip_only" data-i18n="opt_docs_payslip_only">Không có hợp đồng nhưng có payslip</option>
+                <option value="contract_only" data-i18n="opt_docs_contract_only">Có hợp đồng nhưng không có payslip</option>
+                <option value="neither" data-i18n="opt_docs_neither">Không có cả hợp đồng lẫn payslip</option>
+                <option value="unsure" data-i18n="opt_docs_unsure">Không chắc</option>
               </select>
             </div>
 
@@ -615,11 +615,41 @@
 
   <footer class="site-footer">
     <div class="section-shell footer-inner">
-      <div>
-        <strong>VietRights</strong>
-        <p data-i18n="footer_tagline">Thông tin dễ hiểu. Nguồn đáng tin cậy. Quyền lợi rõ ràng hơn.</p>
+      <div class="footer-brand-block">
+        <a class="footer-brand" href="#home" aria-label="Trang chủ VietRights" data-i18n-aria-label="aria_home">
+          <svg class="brand-logo" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M24 40V14" />
+            <path d="M24 24C17 22 12 17 10 9C17 10 22 15 24 22" />
+            <path d="M24 24C31 22 36 17 38 9C31 10 26 15 24 22" />
+            <path d="M24 18C21 14 21 8 24 4C27 8 27 14 24 18" />
+          </svg>
+          <span class="brand-name">Viet<span>Rights</span></span>
+        </a>
+        <p data-i18n="footer_description">Hỗ trợ người lao động Việt Nam hiểu quyền lợi tại Úc.</p>
       </div>
-      <p data-i18n="footer_sub">Prototype for workplace-rights guidance in Australia.</p>
+
+      <nav class="footer-nav" aria-label="Điều hướng cuối trang" data-i18n-aria-label="aria_footer_nav">
+        <strong data-i18n="footer_navigation">Điều hướng</strong>
+        <a href="#home" data-i18n="nav_home">Trang chủ</a>
+        <a href="#how" data-i18n="nav_how">Cách hoạt động</a>
+        <a href="#sources" data-i18n="nav_sources">Nguồn đáng tin cậy</a>
+        <a href="#about" data-i18n="nav_about">Về dự án</a>
+      </nav>
+
+      <nav class="footer-nav" aria-label="Nguồn chính thức" data-i18n-aria-label="aria_footer_resources">
+        <strong data-i18n="footer_resources">Nguồn chính thức</strong>
+        <a href="https://www.fairwork.gov.au/" target="_blank" rel="noopener noreferrer">Fair Work Ombudsman</a>
+        <a href="https://unionsnsw.org.au/your-rights/migrant-workers/" target="_blank" rel="noopener noreferrer">Refugee and Migrant Workers Centre</a>
+        <a href="https://www.safework.nsw.gov.au/" target="_blank" rel="noopener noreferrer">SafeWork NSW</a>
+        <a href="https://github.com/howaboutlinh/vietrights-ui-prototype" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+
+      <div class="footer-note-block">
+        <p data-i18n="footer_disclaimer">VietRights cung cấp thông tin chung, không phải tư vấn pháp lý.</p>
+      </div>
+    </div>
+    <div class="section-shell footer-bottom">
+      <p data-i18n="footer_copyright">© 2026 VietRights · Built for UAVS Hackathon 2026</p>
     </div>
   </footer>
 
