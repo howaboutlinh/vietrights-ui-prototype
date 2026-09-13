@@ -52,7 +52,7 @@ def retry_delay(exc):
     return max(delays)
 
 
-def call_with_retry(operation, *, label, max_attempts=4, deadline=None):
+def call_with_retry(operation, *, label, max_attempts=3, deadline=None):
     """Operation receives the remaining per-attempt timeout in milliseconds."""
     deadline = min(d for d in (deadline, _deadline.get(), time.monotonic() + 180) if d is not None)
     for attempt in range(max_attempts):

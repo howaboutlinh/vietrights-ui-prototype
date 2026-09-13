@@ -23,12 +23,12 @@ def test_recovers_after_three_temporary_failures(clock, caplog):
     calls = []
     def operation(timeout):
         calls.append(timeout)
-        if len(calls) < 4:
+        if len(calls) < 3:
             raise api_error(503)
         return 'answer'
     assert retry.call_with_retry(operation, label='answer') == 'answer'
-    assert len(calls) == 4
-    assert clock[1] == [1.5, 2.5, 4.5]
+    assert len(calls) == 3
+    assert clock[1] == [1.5, 2.5]
     assert 'private payload' not in caplog.text
 
 
@@ -82,12 +82,12 @@ def test_shared_deadline_caps_next_stage_and_resets(clock):
     assert retry.call_with_retry(lambda timeout: timeout, label='new_request') == 40000
 
 
-def test_exhaustion_stops_at_six_attempts(clock):
+def test_exhaustion_stops_at_three_attempts(clock):
     calls = []
     def operation(_):
         calls.append(1)
         raise api_error(503)
     with pytest.raises(errors.APIError):
         retry.call_with_retry(operation, label='research')
-    assert len(calls) == 4
-    assert len(clock[1]) == 3
+    assert len(calls) == 3
+    assert len(clock[1]) == 2

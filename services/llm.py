@@ -17,6 +17,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", os.getenv("GEMINI_CHAT_MODEL", "gemini-3.6-flash"))
+GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "").strip()
 PROMPTS_FILE_PATH = Path(__file__).resolve().parents[1] / "data" / "locales" / "prompts.json"
 DEFAULT_TIMEOUT_MS = int(os.getenv("GEMINI_REQUEST_TIMEOUT_MS", "25000"))
 SUPPORTED_WORKPLACE_ISSUES = {"pay", "payslip", "hours", "visa", "safety", "harassment", "other"}
@@ -158,6 +159,28 @@ def _format_context_for_prompt(context_entries: List[Dict[str, Any]]) -> str:
         blocks.append(block)
 
     return "\n\n".join(blocks)
+
+
+def _request_gemini_analysis(client, model_name, system_prompt, user_prompt, deadline):
+    attempts = 0
+
+    def operation(timeout_ms):
+        nonlocal attempts
+        attempts += 1
+        logger.info("Gemini request attempt %d/3 using model %s", attempts, model_name)
+        return client.models.generate_content(
+            model=model_name,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.3,
+                response_mime_type="application/json",
+                response_schema=_response_schema(),
+                http_options=http_options(timeout_ms),
+            ),
+        )
+
+    return call_with_retry(operation, label="answer", max_attempts=3, deadline=deadline)
 
 
 def _get_gemini_client() -> genai.Client:
