@@ -34,7 +34,7 @@ class Settings:
     """Runtime settings. Secrets remain server-side and are never serialized."""
 
     gemini_api_key: str = ""
-    chat_model: str = "gemini-3.8-flash"
+    chat_model: str = "gemini-3.6-flash"
     embedding_model: str = "gemini-embedding-001"
     database_url: str = ""
     match_count: int = 6
@@ -48,7 +48,7 @@ class Settings:
     def from_env(cls) -> "Settings":
         return cls(
             gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
-            chat_model=os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash")).strip(),
+            chat_model=os.getenv("GEMINI_MODEL", os.getenv("GEMINI_CHAT_MODEL", "gemini-3.6-flash")).strip(),
             embedding_model=os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001").strip(),
             database_url=os.getenv("DATABASE_URL", "").strip(),
             match_count=_int_env("RAG_MATCH_COUNT", 6),

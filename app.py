@@ -31,7 +31,7 @@ def analyze():
     try:
         current_app.logger.info(
             "Starting Gemini analysis model=%s api_key_configured=%s",
-            os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.6-flash")),
+            os.getenv("GEMINI_MODEL", os.getenv("GEMINI_CHAT_MODEL", "gemini-3.6-flash")),
             bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
         )
         with request_budget():

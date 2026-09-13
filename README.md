@@ -36,7 +36,7 @@ Required for web retrieval:
 
 ```text
 GEMINI_API_KEY=
-GEMINI_CHAT_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3.6-flash
 GEMINI_EMBEDDING_MODEL=gemini-embedding-001
 DATABASE_URL=postgresql+psycopg://postgres.PROJECT:URL_ENCODED_PASSWORD@SESSION_POOLER_HOST:5432/postgres?sslmode=require
 RAG_MATCH_COUNT=6
