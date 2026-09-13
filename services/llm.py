@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -17,7 +16,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
+GEMINI_MODEL = os.getenv("GEMINI_CHAT_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash"))
 PROMPTS_FILE_PATH = Path(__file__).resolve().parents[1] / "data" / "locales" / "prompts.json"
 DEFAULT_TIMEOUT_MS = int(os.getenv("GEMINI_REQUEST_TIMEOUT_MS", "25000"))
 SUPPORTED_WORKPLACE_ISSUES = {"pay", "payslip", "hours", "visa", "safety", "harassment", "other"}
@@ -225,20 +224,6 @@ def _response_schema() -> Dict[str, Any]:
         ],
     }
 
-
-def _citations_are_grounded(values: list[str], source_count: int) -> bool:
-    """Require every substantive generated claim to cite a retrieved source."""
-    if not values:
-        return True
-    if source_count < 1:
-        # A no-evidence response may still be generated, but it must not claim
-        # citations that the server cannot attach to an official source.
-        return not any(re.search(r"\[(\d+)\]", value) for value in values)
-    for value in values:
-        references = [int(number) for number in re.findall(r"\[(\d+)\]", value)]
-        if not references or any(number < 1 or number > source_count for number in references):
-            return False
-    return True
 
 
 def _fallback_response(case_data: Dict[str, Any], retrieved_context: List[Dict[str, Any]], language: str, reason: str) -> Dict[str, Any]:
@@ -510,11 +495,6 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
 
     if result["risk_level"] not in {"low", "medium", "high"}:
         result["risk_level"] = "medium"
-
-    claims = [result["summary"], *result["issues"], *result["next_steps"]]
-    if not _citations_are_grounded([value for value in claims if value], len(source_refs)):
-        logger.error("Gemini analysis failed stage=schema_validation reason=ungrounded_citation")
-        raise LLMInvalidResponseError(stage="schema_validation") from None
 
     result["sources"] = [item for item in source_refs if str(item.get("url") or "").startswith(("http://", "https://"))]
     result["answer"] = result["summary"]
