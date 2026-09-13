@@ -22,6 +22,12 @@ PROMPTS_FILE_PATH = Path(__file__).resolve().parents[1] / "data" / "locales" / "
 DEFAULT_TIMEOUT_MS = int(os.getenv("GEMINI_REQUEST_TIMEOUT_MS", "25000"))
 SUPPORTED_WORKPLACE_ISSUES = {"pay", "payslip", "hours", "visa", "safety", "harassment", "other"}
 SUPPORTED_PAY_BASES = {"hourly", "per_shift", "daily", "weekly", "fortnightly", "monthly", "piecework", "unknown"}
+TRUSTED_FALLBACK_SOURCES = [
+    {"title": "Fair Work Ombudsman", "organisation": "Fair Work Ombudsman", "url": "https://www.fairwork.gov.au/"},
+    {"title": "Department of Home Affairs", "organisation": "Department of Home Affairs", "url": "https://www.homeaffairs.gov.au/"},
+    {"title": "SafeWork NSW", "organisation": "SafeWork NSW", "url": "https://www.safework.nsw.gov.au/"},
+    {"title": "RMWC Migrant Workers Hub", "organisation": "RMWC", "url": "https://unionsnsw.org.au/your-rights/migrant-workers/"},
+]
 CHOICE_FIELDS = (
     "workplace", "workPattern", "paidLeave", "documentAvailability",
     "employmentTypeOnDocuments", "payslipStatus", "paymentMethod",
@@ -213,6 +219,72 @@ def _citations_are_grounded(values: list[str], source_count: int) -> bool:
     return True
 
 
+def _fallback_response(case_data: Dict[str, Any], retrieved_context: List[Dict[str, Any]], language: str, reason: str) -> Dict[str, Any]:
+    """Return cautious, deterministic guidance when Gemini cannot respond."""
+    issues = {str(issue).strip() for issue in case_data.get("mainIssues") or []}
+    has_sources = bool(retrieved_context)
+    source_refs = [
+        {
+            "number": number,
+            "title": item.get("document_title") or item.get("source_name") or "Official source",
+            "section": item.get("section_title"),
+            "source_name": item.get("source_name"),
+            "organisation": item.get("source_name"),
+            "url": item.get("source_url"),
+        }
+        for number, item in enumerate(retrieved_context, start=1)
+        if str(item.get("source_url") or "").startswith(("http://", "https://"))
+    ]
+    sources = source_refs if retrieved_context else TRUSTED_FALLBACK_SOURCES
+    citation = " [1]" if source_refs else ""
+
+    if language == "vi":
+        summary = "Dưới đây là hướng dẫn thận trọng dựa trên thông tin bạn đã cung cấp và các nguồn chính thức hiện có."
+        issue_rules = {
+            "pay": f"Kiểm tra mức lương tối thiểu và giữ lại hồ sơ tiền lương, lịch làm việc và thanh toán.{citation}",
+            "payslip": f"Kiểm tra yêu cầu về payslip và giữ bản payslip, tin nhắn, lịch làm việc cùng bằng chứng thanh toán.{citation}",
+            "hours": f"Ghi lại ca làm, thời gian nghỉ và giờ làm thêm; giữ roster hoặc tin nhắn liên quan.{citation}",
+            "visa": f"Tình trạng visa không làm mất quyền tại nơi làm việc. Hãy tìm hỗ trợ phù hợp nếu bị đe dọa liên quan đến visa.{citation}",
+            "safety": "Nếu đang nguy hiểm ngay lập tức, gọi 000. Với vấn đề an toàn không khẩn cấp, liên hệ SafeWork NSW.",
+            "harassment": f"Giữ tin nhắn, roster và hồ sơ thanh toán; tìm dịch vụ hỗ trợ phù hợp.{citation}",
+            "other": "Ghi lại sự việc, giữ các tài liệu liên quan và tìm hỗ trợ phù hợp.",
+        }
+        issues_text = [issue_rules[issue] for issue in issues if issue in issue_rules]
+        evidence = ["Giữ payslip, roster, tin nhắn, hồ sơ thanh toán và ghi chú về các sự việc liên quan."]
+        next_steps = ["Kiểm tra các nguồn chính thức bên dưới và tìm hỗ trợ phù hợp với tình huống của bạn."]
+        questions = ["Bạn có tài liệu hoặc bằng chứng nào khác liên quan đến tình huống này không?"]
+    else:
+        summary = "The following is cautious guidance based on the information provided and the official sources currently available."
+        issue_rules = {
+            "pay": f"Check minimum pay and keep wage, roster and payment records.{citation}",
+            "payslip": f"Check payslip requirements and keep payslips, messages, rosters and payment evidence.{citation}",
+            "hours": f"Record shifts, breaks and overtime, and keep rosters or related messages.{citation}",
+            "visa": f"Visa status does not remove workplace rights. Seek appropriate support if you face visa-related threats.{citation}",
+            "safety": "If you are in immediate danger, call 000. For non-urgent workplace safety concerns, contact SafeWork NSW.",
+            "harassment": f"Preserve messages, rosters and payment records, and seek appropriate support.{citation}",
+            "other": "Record what happened, preserve relevant documents, and seek appropriate support.",
+        }
+        issues_text = [issue_rules[issue] for issue in issues if issue in issue_rules]
+        evidence = ["Keep payslips, rosters, messages, payment records and notes about relevant events."]
+        next_steps = ["Review the official sources below and seek support appropriate to your situation."]
+        questions = ["Do you have other documents or evidence related to this situation?"]
+
+    return {
+        "answer": summary,
+        "summary": summary,
+        "issues": issues_text,
+        "evidence": evidence,
+        "next_steps": next_steps,
+        "clarification_questions": questions,
+        "risk_level": "high" if "safety" in issues else "medium",
+        "sources": sources,
+        "content_format": "markdown",
+        "retrieval": {"used": True, "result_count": len(sources)},
+        "fallback": True,
+        "fallback_reason": reason,
+    }
+
+
 def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
     """Analyze a workplace rights case using retrieved context and Gemini LLM."""
     if not isinstance(case_data, dict):
@@ -254,14 +326,16 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         retrieved_context = retrieve_context(case_data)
     except errors.APIError as exc:
         if exc.code in (408, 504) or exc.status in ("DEADLINE_EXCEEDED",):
-            raise LLMTimeoutError("The AI research request timed out. Please try again.") from None
+            return _fallback_response(case_data, [], language, "request_timeout")
         if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",):
-            raise LLMQuotaError("API rate limit or quota exceeded. Please try again later.") from None
-        raise LLMServiceError("An error occurred while researching official sources.") from None
+            return _fallback_response(case_data, [], language, "quota_exceeded")
+        return _fallback_response(case_data, [], language, "service_error")
     except (TimeoutError, httpx.TimeoutException):
-        raise LLMTimeoutError() from None
+        return _fallback_response(case_data, [], language, "request_timeout")
     except httpx.TransportError:
-        raise LLMServiceError() from None
+        return _fallback_response(case_data, [], language, "service_error")
+    except LLMBaseError as exc:
+        return _fallback_response(case_data, [], language, exc.error_code)
     if not retrieved_context:
         message = (
             "Chưa tìm thấy thông tin chính thức đủ phù hợp để trả lời tình huống này. "
@@ -326,22 +400,22 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         if exc.code in (401, 403) or exc.status in ("UNAUTHENTICATED", "PERMISSION_DENIED") or "unauthenticated" in error_msg:
             raise LLMAuthenticationError("Authentication failed. Please verify the configured GEMINI_API_KEY.") from None
         if exc.code == 429 or exc.status in ("RESOURCE_EXHAUSTED",) or "quota" in error_msg:
-            raise LLMQuotaError("API rate limit or quota exceeded. Please try again later.") from None
+            return _fallback_response(case_data, retrieved_context, language, "quota_exceeded")
         if exc.code == 404 or exc.status in ("NOT_FOUND",) or "not found" in error_msg:
             raise LLMModelNotFoundError(f"Configured model '{model_name}' is not available. Please check GEMINI_MODEL.") from None
         if exc.code in (408, 504) or exc.status in ("DEADLINE_EXCEEDED",) or "timeout" in error_msg:
-            raise LLMTimeoutError("The AI model request timed out. Please try again.") from None
-        raise LLMServiceError("An error occurred while communicating with the AI service.") from None
+            return _fallback_response(case_data, retrieved_context, language, "request_timeout")
+        return _fallback_response(case_data, retrieved_context, language, "service_error")
     except TimeoutError:
-        raise LLMTimeoutError("The AI model request timed out. Please try again.") from None
-    except LLMBaseError:
-        raise
+        return _fallback_response(case_data, retrieved_context, language, "request_timeout")
+    except (LLMQuotaError, LLMTimeoutError, LLMServiceError) as exc:
+        return _fallback_response(case_data, retrieved_context, language, exc.error_code)
     except Exception as exc:
         exc_str = str(exc).lower()
         if "timeout" in exc_str:
-            raise LLMTimeoutError("The AI model request timed out. Please try again.") from None
+            return _fallback_response(case_data, retrieved_context, language, "request_timeout")
         logger.error("Unexpected Gemini error type=%s", type(exc).__name__)
-        raise LLMServiceError("An unexpected error occurred while communicating with the AI service.") from None
+        return _fallback_response(case_data, retrieved_context, language, "service_error")
 
     content = getattr(response, "text", None)
     if not content:

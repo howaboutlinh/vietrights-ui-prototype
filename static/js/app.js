@@ -593,6 +593,9 @@ function renderResult(result) {
   const questions = document.getElementById('result-questions');
   const sources = document.getElementById('result-sources');
   const title = document.getElementById('result-title');
+  const fallbackNotice = document.getElementById('fallback-notice');
+
+  if (fallbackNotice) fallbackNotice.hidden = result?.fallback !== true;
 
   if (title) {
     title.textContent = t('result.title', 'Check result');

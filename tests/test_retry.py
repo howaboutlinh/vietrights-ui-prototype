@@ -19,16 +19,16 @@ def clock(monkeypatch):
     return now, waits
 
 
-def test_recovers_after_five_temporary_failures(clock, caplog):
+def test_recovers_after_three_temporary_failures(clock, caplog):
     calls = []
     def operation(timeout):
         calls.append(timeout)
-        if len(calls) < 6:
+        if len(calls) < 4:
             raise api_error(503)
         return 'answer'
     assert retry.call_with_retry(operation, label='answer') == 'answer'
-    assert len(calls) == 6
-    assert clock[1] == [2.5, 4.5, 8.5, 16.5, 30.5]
+    assert len(calls) == 4
+    assert clock[1] == [1.5, 2.5, 4.5]
     assert 'private payload' not in caplog.text
 
 
@@ -48,6 +48,20 @@ def test_provider_retry_info_is_honored(clock):
         return 'ok'
     assert retry.call_with_retry(operation, label='research') == 'ok'
     assert clock[1] == [12]
+
+
+def test_429_retries_then_returns_success(clock):
+    calls = []
+
+    def operation(_):
+        calls.append(1)
+        if len(calls) < 2:
+            raise api_error(429)
+        return 'ok'
+
+    assert retry.call_with_retry(operation, label='answer') == 'ok'
+    assert len(calls) == 2
+    assert clock[1] == [1.5]
 
 
 def test_long_provider_delay_does_not_sleep_past_deadline(clock):
@@ -75,5 +89,5 @@ def test_exhaustion_stops_at_six_attempts(clock):
         raise api_error(503)
     with pytest.raises(errors.APIError):
         retry.call_with_retry(operation, label='research')
-    assert len(calls) == 6
-    assert len(clock[1]) == 5
+    assert len(calls) == 4
+    assert len(clock[1]) == 3

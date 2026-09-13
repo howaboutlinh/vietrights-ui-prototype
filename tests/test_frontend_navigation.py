@@ -60,6 +60,13 @@ def test_paid_leave_unknown_value_is_preserved_in_frontend_payload():
     assert "paidLeave: paidLeave === 'yes' ? true : paidLeave === 'no' ? false : null" not in source
 
 
+def test_analysis_submission_is_blocked_while_request_is_active():
+    source = APP_JS.read_text(encoding="utf-8")
+
+    assert "if (isAnalyzing) return;" in source
+    assert "isAnalyzing = true;" in source
+
+
 def test_pay_frequency_labels_and_dynamic_amount_placeholders_switch_between_languages():
     translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
 

@@ -1,5 +1,6 @@
 import services.llm
 import pytest
+import app as app_module
 from app import app
 from services.config import ConfigurationError
 from types import SimpleNamespace
@@ -79,3 +80,68 @@ def test_api_response_contains_grounded_answer_and_sources(monkeypatch):
     assert payload["sources"][0]["section"] == "Pay slips"
     assert payload["retrieval"]["result_count"] == 1
     assert len(attempts) == 3
+
+
+@pytest.mark.parametrize("error_type", [services.llm.LLMQuotaError, services.llm.LLMTimeoutError, services.llm.LLMServiceError])
+def test_gemini_controlled_errors_return_http_200_fallback(monkeypatch, error_type):
+    monkeypatch.setattr(app_module, "analyze_case", lambda _data: (_ for _ in ()).throw(error_type()))
+    response = app.test_client().post("/analyze", json=SCENARIO)
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["status"] == "success"
+    assert payload["fallback"] is True
+    assert payload["risk_level"] == "medium"
+    assert payload["retrieval"] == {"used": True, "result_count": 0}
+    assert {"answer", "summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources", "content_format", "retrieval"}.issubset(payload)
+    assert all(source["url"] in {
+        "https://www.fairwork.gov.au/", "https://www.homeaffairs.gov.au/",
+        "https://www.safework.nsw.gov.au/", "https://unionsnsw.org.au/your-rights/migrant-workers/",
+    } for source in payload["sources"])
+
+
+def test_permanent_429_returns_fallback_with_http_200(monkeypatch):
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Fair Work Ombudsman", "source_url": "https://fairwork.gov.au/pay",
+        "document_title": "Minimum wages", "section_title": "Pay", "content": "Official pay guidance.",
+    }])
+    from google.genai import errors
+    from services import retry
+    monkeypatch.setattr(retry.time, "sleep", lambda _: None)
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(
+        models=SimpleNamespace(generate_content=lambda **_: (_ for _ in ()).throw(errors.APIError(429, {"error": {"code": 429}})))
+    ))
+
+    response = app.test_client().post("/analyze", json=SCENARIO)
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["fallback"] is True
+    assert payload["fallback_reason"] == "quota_exceeded"
+    assert {"answer", "summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources", "content_format", "retrieval"}.issubset(payload)
+    assert payload["sources"][0]["url"] == "https://fairwork.gov.au/pay"
+
+
+def test_fallback_source_urls_are_restricted_to_retrieved_entries(monkeypatch):
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Official source", "source_url": "https://retrieved.example/guide",
+        "document_title": "Guide", "content": "Official guidance.",
+    }])
+    from google.genai import errors
+    from services import retry
+    monkeypatch.setattr(retry.time, "sleep", lambda _: None)
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(
+        models=SimpleNamespace(generate_content=lambda **_: (_ for _ in ()).throw(errors.APIError(429, {"error": {"code": 429}})))
+    ))
+    payload = app.test_client().post("/analyze", json=SCENARIO).get_json()
+    assert [source["url"] for source in payload["sources"]] == ["https://retrieved.example/guide"]
+
+
+def test_fallback_uses_trusted_organisations_when_no_entries_are_retrieved(monkeypatch):
+    from google.genai import errors
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        errors.APIError(429, {"error": {"code": 429}})
+    ))
+    payload = app.test_client().post("/analyze", json=SCENARIO).get_json()
+    assert payload["fallback"] is True
+    assert {source["organisation"] for source in payload["sources"]} == {
+        "Fair Work Ombudsman", "Department of Home Affairs", "SafeWork NSW", "RMWC"
+    }

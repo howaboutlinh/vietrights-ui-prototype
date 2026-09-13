@@ -4,13 +4,64 @@ from flask import Flask, current_app, jsonify, render_template, request
 
 from services.config import ConfigurationError, Settings, sqlalchemy_database_url
 from services.database import db
-from services.llm import LLMBaseError, analyze_case
+from services.llm import LLMBaseError, LLMQuotaError, LLMServiceError, LLMTimeoutError, analyze_case
 from services.retry import request_budget
 
 
 def home():
     """Render the main landing and case intake page."""
     return render_template("index.html")
+
+
+TRUSTED_FALLBACK_SOURCES = [
+    {"number": 1, "title": "Fair Work Ombudsman", "organisation": "Fair Work Ombudsman", "url": "https://www.fairwork.gov.au/"},
+    {"number": 2, "title": "Department of Home Affairs", "organisation": "Department of Home Affairs", "url": "https://www.homeaffairs.gov.au/"},
+    {"number": 3, "title": "SafeWork NSW", "organisation": "SafeWork NSW", "url": "https://www.safework.nsw.gov.au/"},
+    {"number": 4, "title": "RMWC Migrant Workers Hub", "organisation": "RMWC", "url": "https://unionsnsw.org.au/your-rights/migrant-workers/"},
+]
+
+
+def fallback_response(case_data):
+    """Return safe bilingual guidance when Gemini is temporarily unavailable."""
+    language = "en" if str(case_data.get("language") or "vi").lower() == "en" else "vi"
+    issues = {str(issue).strip() for issue in case_data.get("mainIssues") or []}
+    if language == "vi":
+        rules = {
+            "pay": "Ghi lại giờ làm, các khoản thanh toán và kiểm tra mức lương tối thiểu phù hợp với Fair Work Ombudsman.",
+            "payslip": "Giữ hồ sơ ngân hàng và tin nhắn liên quan, đồng thời liên hệ Fair Work Ombudsman.",
+            "hours": "Ghi lại roster, ca làm, giờ làm thêm và thời gian nghỉ.",
+            "visa": "Người lao động di trú vẫn có quyền tại nơi làm việc. Xem thông tin từ Home Affairs.",
+            "safety": "Nếu có nguy hiểm ngay lập tức, gọi 000; nếu không khẩn cấp, liên hệ SafeWork NSW.",
+            "harassment": "Giữ lại tin nhắn và tìm hỗ trợ phù hợp.",
+            "other": "Ghi lại sự việc, giữ tài liệu liên quan và tìm hỗ trợ phù hợp.",
+        }
+        summary = "Gemini đang tạm thời không khả dụng. Dưới đây là hướng dẫn dự phòng từ các nguồn chính thức."
+    else:
+        rules = {
+            "pay": "Record hours and payments, and check the applicable minimum rate with the Fair Work Ombudsman.",
+            "payslip": "Preserve bank records and messages, and contact the Fair Work Ombudsman.",
+            "hours": "Record rosters, shifts, overtime and breaks.",
+            "visa": "Migrant workers still have workplace rights. Review information from Home Affairs.",
+            "safety": "If there is immediate danger call 000; otherwise contact SafeWork NSW.",
+            "harassment": "Preserve messages and seek appropriate support.",
+            "other": "Record what happened, preserve relevant documents and seek appropriate support.",
+        }
+        summary = "Gemini is temporarily unavailable. The following is fallback guidance from official sources."
+    issue_guidance = [rules[issue] for issue in issues if issue in rules]
+    return {
+        "status": "success",
+        "fallback": True,
+        "summary": summary,
+        "answer": summary,
+        "issues": issue_guidance,
+        "evidence": [],
+        "next_steps": [],
+        "clarification_questions": [],
+        "risk_level": "medium",
+        "sources": TRUSTED_FALLBACK_SOURCES,
+        "content_format": "markdown",
+        "retrieval": {"used": True, "result_count": 0},
+    }
 
 
 def analyze():
@@ -22,6 +73,9 @@ def analyze():
         with request_budget():
             result = analyze_case(data)
         return jsonify({"status": "success", **result})
+    except (LLMQuotaError, LLMTimeoutError, LLMServiceError):
+        current_app.logger.warning("Gemini temporarily unavailable; returning fallback guidance")
+        return jsonify(fallback_response(data)), 200
     except LLMBaseError as exc:
         current_app.logger.warning("Controlled LLM error code=%s", exc.error_code)
         return jsonify({"status": "error", "error_code": exc.error_code, "error": exc.safe_message}), exc.status_code

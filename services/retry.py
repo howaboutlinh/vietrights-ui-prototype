@@ -52,7 +52,7 @@ def retry_delay(exc):
     return max(delays)
 
 
-def call_with_retry(operation, *, label, max_attempts=6, deadline=None):
+def call_with_retry(operation, *, label, max_attempts=4, deadline=None):
     """Operation receives the remaining per-attempt timeout in milliseconds."""
     deadline = min(d for d in (deadline, _deadline.get(), time.monotonic() + 180) if d is not None)
     for attempt in range(max_attempts):
@@ -65,7 +65,7 @@ def call_with_retry(operation, *, label, max_attempts=6, deadline=None):
             code = getattr(exc, 'code', None)
             if isinstance(exc, errors.APIError) and code not in {408, 429, 500, 502, 503, 504}:
                 raise
-            delay = max(min(2 ** (attempt + 1), 30) + random.uniform(0, 1), retry_delay(exc))
+            delay = max(min(2 ** attempt, 30) + random.uniform(0, 1), retry_delay(exc))
             if attempt + 1 >= max_attempts or delay + 1 >= deadline - time.monotonic():
                 raise
             logger.warning('AI retry stage=%s attempt=%d code=%s delay_seconds=%.1f', label, attempt + 1, code, delay)
