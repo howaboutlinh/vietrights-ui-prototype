@@ -117,5 +117,9 @@ def test_contract_and_payslip_choices_map_to_independent_nullable_flags():
     assert "contract_only: { hasContract: true, hasPayslip: false }" in source
     assert "neither: { hasContract: false, hasPayslip: false }" in source
     assert "unsure: { hasContract: null, hasPayslip: null }" in source
-    assert translations["vi"]["opt_docs_payslip_only"] == "Không có hợp đồng nhưng có payslip"
-    assert translations["en"]["opt_docs_contract_only"] == "I have a contract but no payslips"
+    assert [translations["vi"][key] for key in ("opt_docs_both", "opt_docs_payslip_only", "opt_docs_contract_only", "opt_docs_neither", "opt_docs_unsure")] == [
+        "Có hợp đồng / Có payslip", "Không có hợp đồng / Có payslip", "Có hợp đồng / Không có payslip", "Không có hợp đồng / Không có payslip", "Không chắc"
+    ]
+    assert [translations["en"][key] for key in ("opt_docs_both", "opt_docs_payslip_only", "opt_docs_contract_only", "opt_docs_neither", "opt_docs_unsure")] == [
+        "Contract / Payslips", "No contract / Payslips", "Contract / No payslips", "No contract / No payslips", "I'm not sure"
+    ]
