@@ -48,12 +48,24 @@ def fallback_response(case_data):
         }
         summary = "Gemini is temporarily unavailable. The following is fallback guidance from official sources."
     issue_guidance = [rules[issue] for issue in issues if issue in rules]
+    issue_analysis = [{
+        "issue": issue,
+        "fact_from_user": "Submitted intake facts",
+        "why_it_may_be_unfair": guidance,
+        "applicable_law_or_rule": "See the official source below; exact rule requires further facts.",
+        "section_or_clause": "",
+        "comparison_or_calculation": "",
+        "evidence_needed": [],
+        "confidence": "low",
+        "missing_information": [],
+    } for issue, guidance in zip(issues, issue_guidance)]
     return {
         "status": "success",
         "fallback": True,
         "summary": summary,
         "answer": summary,
         "issues": issue_guidance,
+        "issue_analysis": issue_analysis,
         "evidence": [],
         "next_steps": [],
         "clarification_questions": [],

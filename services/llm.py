@@ -193,6 +193,24 @@ def _response_schema() -> Dict[str, Any]:
                     "required": ["title", "organisation", "url"],
                 },
             },
+            "issue_analysis": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "issue": {"type": "string"},
+                        "fact_from_user": {"type": "string"},
+                        "why_it_may_be_unfair": {"type": "string"},
+                        "applicable_law_or_rule": {"type": "string"},
+                        "section_or_clause": {"type": "string"},
+                        "comparison_or_calculation": {"type": "string"},
+                        "evidence_needed": {"type": "array", "items": {"type": "string"}},
+                        "confidence": {"type": "string"},
+                        "missing_information": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["issue", "fact_from_user", "why_it_may_be_unfair", "applicable_law_or_rule", "section_or_clause", "comparison_or_calculation", "evidence_needed", "confidence", "missing_information"],
+                },
+            },
         },
         "required": [
             "summary",
@@ -269,6 +287,21 @@ def _fallback_response(case_data: Dict[str, Any], retrieved_context: List[Dict[s
         next_steps = ["Review the official sources below and seek support appropriate to your situation."]
         questions = ["Do you have other documents or evidence related to this situation?"]
 
+    issue_analysis = [
+        {
+            "issue": issue,
+            "fact_from_user": str(case_data.get("description") or "").strip() or "Dữ kiện chi tiết chưa được cung cấp.",
+            "why_it_may_be_unfair": text,
+            "applicable_law_or_rule": "Chưa xác định từ nguồn dự phòng; cần kiểm tra nguồn chính thức.",
+            "section_or_clause": "",
+            "comparison_or_calculation": "",
+            "evidence_needed": evidence,
+            "confidence": "low",
+            "missing_information": questions,
+        }
+        for issue, text in zip(issues, issues_text)
+    ]
+
     return {
         "answer": summary,
         "summary": summary,
@@ -276,6 +309,7 @@ def _fallback_response(case_data: Dict[str, Any], retrieved_context: List[Dict[s
         "evidence": evidence,
         "next_steps": next_steps,
         "clarification_questions": questions,
+        "issue_analysis": issue_analysis,
         "risk_level": "high" if "safety" in issues else "medium",
         "sources": sources,
         "content_format": "markdown",
@@ -428,7 +462,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         raise LLMInvalidResponseError("Gemini returned no usable content.")
 
     parsed = _safe_parse_json(content)
-    required = ["summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources"]
+    required = ["summary", "issues", "evidence", "next_steps", "clarification_questions", "risk_level", "sources", "issue_analysis"]
     for key in required:
         if key not in parsed:
             raise LLMInvalidResponseError(f"Missing required field in model response: {key}")
@@ -448,6 +482,20 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
             }
             for item in (parsed.get("sources") or [])
             if isinstance(item, dict)
+        ],
+        "issue_analysis": [
+            {
+                "issue": str(item.get("issue", "")).strip(),
+                "fact_from_user": str(item.get("fact_from_user", "")).strip(),
+                "why_it_may_be_unfair": str(item.get("why_it_may_be_unfair", "")).strip(),
+                "applicable_law_or_rule": str(item.get("applicable_law_or_rule", "")).strip(),
+                "section_or_clause": str(item.get("section_or_clause", "")).strip(),
+                "comparison_or_calculation": str(item.get("comparison_or_calculation", "")).strip(),
+                "evidence_needed": _coerce_list(item.get("evidence_needed", [])),
+                "confidence": str(item.get("confidence", "low")).strip(),
+                "missing_information": _coerce_list(item.get("missing_information", [])),
+            }
+            for item in (parsed.get("issue_analysis") or []) if isinstance(item, dict)
         ],
     }
 

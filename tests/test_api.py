@@ -5,6 +5,7 @@ from app import app
 from services.config import ConfigurationError
 from types import SimpleNamespace
 import json
+from pathlib import Path
 
 SCENARIO = {"mainIssues": ["pay", "payslip"], "description": "Tôi được trả $15 một giờ bằng tiền mặt và không có payslip.", "language": "vi"}
 
@@ -62,6 +63,7 @@ def test_api_response_contains_grounded_answer_and_sources(monkeypatch):
         "summary": "Bạn nên kiểm tra mức lương và phiếu lương [1].", "issues": ["Có thể có vấn đề về lương [1]."],
         "evidence": ["Giữ lại lịch làm việc [1]."], "next_steps": ["Liên hệ Fair Work [1]."],
         "clarification_questions": [], "risk_level": "medium", "sources": [],
+        "issue_analysis": [],
     }
     from google.genai import errors
     from services import retry
@@ -145,3 +147,46 @@ def test_fallback_uses_trusted_organisations_when_no_entries_are_retrieved(monke
     assert {source["organisation"] for source in payload["sources"]} == {
         "Fair Work Ombudsman", "Department of Home Affairs", "SafeWork NSW", "RMWC"
     }
+
+
+def test_successful_analysis_keeps_detailed_scenario_specific_output(monkeypatch):
+    monkeypatch.setattr(services.llm, "retrieve_context", lambda *_args, **_kwargs: [{
+        "source_name": "Fair Work Ombudsman", "source_url": "https://fairwork.gov.au/pay",
+        "document_title": "Pay guide", "section_title": "Minimum pay", "content": "Official pay evidence.",
+    }])
+
+    def generate(**kwargs):
+        case_data_start = kwargs["contents"].index("Case data:") + len("Case data:")
+        case_data = json.JSONDecoder().raw_decode(kwargs["contents"][case_data_start:].lstrip())[0]
+        issue = case_data["mainIssues"][0]
+        amount = case_data.get("pay", {}).get("amount")
+        return SimpleNamespace(text=json.dumps({
+            "summary": f"{issue} analysis [1]", "issues": [f"{issue} [1]"],
+            "evidence": ["Keep records [1]."], "next_steps": ["Check evidence [1]."],
+            "clarification_questions": [], "risk_level": "medium", "sources": [],
+            "issue_analysis": [{
+                "issue": issue, "fact_from_user": str(amount),
+                "why_it_may_be_unfair": f"Specific {issue} explanation [1].",
+                "applicable_law_or_rule": "Official rule [1].", "section_or_clause": "",
+                "comparison_or_calculation": f"Actual amount: {amount}",
+                "evidence_needed": ["Records"], "confidence": "medium", "missing_information": [],
+            }],
+        }))
+
+    monkeypatch.setattr(services.llm, "_get_gemini_client", lambda: SimpleNamespace(models=SimpleNamespace(generate_content=generate)))
+    pay_payload = app.test_client().post("/analyze", json={**SCENARIO, "language": "en", "mainIssues": ["pay"], "pay": {"payBasis": "hourly", "amount": 15}}).get_json()
+    visa_payload = app.test_client().post("/analyze", json={**SCENARIO, "language": "en", "mainIssues": ["visa"], "pay": {"payBasis": "unknown", "amount": None}}).get_json()
+    assert pay_payload["issue_analysis"][0]["fact_from_user"] == "15"
+    assert pay_payload["issue_analysis"] != visa_payload["issue_analysis"]
+
+
+def test_prompts_require_source_grounded_award_clarification_and_facts():
+    prompts = json.loads((Path(__file__).parents[1] / "data" / "locales" / "prompts.json").read_text(encoding="utf-8"))
+    for language in ("vi", "en"):
+        combined = prompts[language]["system_prompt"] + prompts[language]["user_prompt_template"]
+        assert "issue_analysis" in combined
+        assert "Award" in combined or "Award" in combined
+        assert "classification" in combined
+        assert "section_or_clause" in combined
+        assert ("Never invent" in combined) if language == "en" else ("không bịa" in combined.lower())
+        assert "not enough information" in combined.lower() or "chưa đủ thông tin" in combined.lower()

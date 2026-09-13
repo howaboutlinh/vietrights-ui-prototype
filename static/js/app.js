@@ -591,6 +591,7 @@ function renderResult(result) {
   const evidence = document.getElementById('result-evidence');
   const nextSteps = document.getElementById('result-next-steps');
   const questions = document.getElementById('result-questions');
+  const issueAnalysis = document.getElementById('result-issue-analysis');
   const sources = document.getElementById('result-sources');
   const title = document.getElementById('result-title');
   const fallbackNotice = document.getElementById('fallback-notice');
@@ -625,6 +626,33 @@ function renderResult(result) {
   renderList(evidence, result?.evidence || []);
   renderList(nextSteps, result?.next_steps || []);
   renderList(questions, result?.clarification_questions || []);
+
+  if (issueAnalysis) {
+    issueAnalysis.textContent = '';
+    (result?.issue_analysis || []).forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'result-card issue-analysis-card';
+      const heading = document.createElement('h4');
+      heading.textContent = item.issue || t('result.issue_default', 'Issue');
+      card.appendChild(heading);
+      const fields = [
+        ['result.issue_fact', item.fact_from_user],
+        ['result.issue_why_unfair', item.why_it_may_be_unfair],
+        ['result.issue_law', [item.applicable_law_or_rule, item.section_or_clause].filter(Boolean).join(' · ')],
+        ['result.issue_calculation', item.comparison_or_calculation],
+        ['result.issue_evidence', (item.evidence_needed || []).join(' ')],
+        ['result.issue_missing', (item.missing_information || []).join(' ')],
+      ];
+      fields.filter(([, value]) => value).forEach(([key, value]) => {
+        const paragraph = document.createElement('p');
+        const label = document.createElement('strong');
+        label.textContent = `${t(key, key)}: `;
+        paragraph.append(label, document.createTextNode(value));
+        card.appendChild(paragraph);
+      });
+      issueAnalysis.appendChild(card);
+    });
+  }
 
   if (sources) {
     sources.textContent = '';
