@@ -52,6 +52,14 @@ def test_vietnamese_safe_font_stack_is_defined_for_all_content():
     assert 'font-family: Inter' not in styles
 
 
+def test_paid_leave_unknown_value_is_preserved_in_frontend_payload():
+    source = APP_JS.read_text(encoding="utf-8")
+
+    assert "paidLeave: paidLeave === 'yes'" in source
+    assert ": paidLeave," in source
+    assert "paidLeave: paidLeave === 'yes' ? true : paidLeave === 'no' ? false : null" not in source
+
+
 def test_pay_frequency_labels_and_dynamic_amount_placeholders_switch_between_languages():
     translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
 

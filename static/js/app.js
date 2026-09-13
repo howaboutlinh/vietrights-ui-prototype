@@ -507,7 +507,11 @@ function collectCaseData() {
     workplaceOther,
     workTime: getSelectedWorkTimes(),
     workPattern,
-    paidLeave: paidLeave === 'yes' ? true : paidLeave === 'no' ? false : null,
+    paidLeave: paidLeave === 'yes'
+      ? true
+      : paidLeave === 'no'
+        ? false
+        : paidLeave,
     documentAvailability: documents,
     employmentTypeOnDocuments: employmentDocType,
     pay: {
