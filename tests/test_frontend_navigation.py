@@ -43,10 +43,14 @@ def test_heading_text_is_normalized_and_grapheme_safe():
 
 def test_vietnamese_safe_font_stack_is_defined_for_all_content():
     styles = STYLE_CSS.read_text(encoding="utf-8")
+    template = (Path(__file__).parents[1] / "templates" / "index.html").read_text(encoding="utf-8")
 
-    assert '@import url(\'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro' in styles
-    assert 'subset=vietnamese' in styles
-    assert '--sans: "Be Vietnam Pro", "Noto Sans", Arial, sans-serif;' in styles
+    assert 'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap' in template
+    assert '--font-bilingual: "Be Vietnam Pro", "Noto Sans", "Helvetica Neue", Arial, sans-serif;' in styles
+    assert 'font-family: var(--font-bilingual);' in styles
+    assert 'font-variant: normal;' in styles
+    assert 'font-feature-settings: normal;' in styles
+    assert 'text-transform: none;' in styles
     assert '--serif: "Noto Serif", Georgia, "Times New Roman", serif;' in styles
     assert 'font-family: "Snell Roundhand"' not in styles
     assert 'font-family: Inter' not in styles

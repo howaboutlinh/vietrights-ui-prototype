@@ -1,8 +1,9 @@
 from types import SimpleNamespace
+import json
 import pytest
 from services.config import ConfigurationError, Settings
 from services.embedding_service import EmbeddingError, EmbeddingService
-from services.retrieval import KnowledgeTools, MAX_PLANNING_ROUNDS, case_to_question, compact_case_data, retrieve_context, rewrite_search_query
+from services.retrieval import KnowledgeTools, MAX_PLANNING_ROUNDS, case_to_question, compact_case_data, load_local_knowledge, retrieve_context, rewrite_search_query
 
 def settings(**changes):
     base = Settings(gemini_api_key="x", database_url="postgresql://db-user:secret@pooler.example/postgres")
@@ -82,3 +83,32 @@ def test_compact_case_does_not_write_a_physical_json_file(tmp_path, monkeypatch)
     monkeypatch.chdir(tmp_path)
     case_to_question({"mainIssues": ["pay"], "description": "Tôi được trả thiếu."})
     assert list(tmp_path.iterdir()) == []
+
+
+def test_local_knowledge_loads_populated_folders_and_preserves_metadata(tmp_path):
+    (tmp_path / "home_affairs").mkdir()
+    (tmp_path / "rmwc").mkdir()
+    (tmp_path / "safework_nsw").mkdir()
+    record = {
+        "title": "Source title", "organisation": "SafeWork NSW", "topic": "safety",
+        "source_url": "https://official.example/safety", "last_checked": "2026-09-13",
+        "content": ["Official safety content."],
+    }
+    (tmp_path / "safework_nsw" / "source.json").write_text(json.dumps(record), encoding="utf-8")
+    loaded = load_local_knowledge(tmp_path)
+    assert len(loaded) == 1
+    assert loaded[0]["source_name"] == "SafeWork NSW"
+    assert loaded[0]["source_url"] == "https://official.example/safety"
+
+
+def test_empty_local_knowledge_folders_do_not_crash(tmp_path):
+    for folder in ("home_affairs", "rmwc", "safework_nsw"):
+        (tmp_path / folder).mkdir()
+    assert load_local_knowledge(tmp_path) == []
+
+
+def test_project_local_knowledge_contains_home_affairs_and_safework_sources():
+    organisations = {record["source_name"] for record in load_local_knowledge()}
+    assert "Department of Home Affairs" in organisations
+    assert "SafeWork NSW" in organisations
+    assert "RMWC" not in organisations

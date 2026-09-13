@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import logging
 import time
+import hashlib
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -16,6 +18,7 @@ from services.vector_store import SQLAlchemyVectorStore
 from services.retry import call_with_retry, http_options
 
 logger = logging.getLogger(__name__)
+LOCAL_KNOWLEDGE_ROOT = Path(__file__).resolve().parents[1] / "data" / "knowledge"
 MAX_TOOL_CALLS = 8
 MAX_RESULTS_PER_CALL = 6
 MAX_AGENT_SECONDS = 70
@@ -84,6 +87,40 @@ def compact_case_data(case_data: dict[str, Any]) -> dict[str, Any]:
         if value not in (None, ""):
             compact[key] = value
     return compact
+
+
+def load_local_knowledge(root: str | Path = LOCAL_KNOWLEDGE_ROOT) -> list[dict[str, Any]]:
+    """Load normalized JSON source records recursively; empty folders are valid."""
+    root_path = Path(root)
+    if not root_path.is_dir():
+        return []
+    records: list[dict[str, Any]] = []
+    for path in sorted(root_path.rglob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Local knowledge file skipped name=%s error=%s", path.name, type(exc).__name__)
+            continue
+        values = payload if isinstance(payload, list) else [payload]
+        for record in values:
+            if not isinstance(record, dict) or not record.get("content"):
+                continue
+            if "TODO" in str(record.get("source_url") or "") or any("TODO" in str(item) for item in record["content"]):
+                continue
+            text = " ".join(str(item).strip() for item in record["content"] if str(item).strip())
+            source_url = str(record.get("source_url") or "")
+            records.append({
+                "id": str(path.relative_to(root_path)),
+                "content_hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                "source_name": record.get("organisation"),
+                "source_url": source_url,
+                "document_title": record.get("title"),
+                "section_title": record.get("topic"),
+                "document_type": "json",
+                "content": text,
+                "similarity": 0.61,
+            })
+    return records
 
 
 def case_to_question(case_data: dict[str, Any]) -> str:
@@ -184,7 +221,7 @@ def retrieve_context(case_data: dict[str, Any], settings: Settings | None = None
     client = rewrite_client or genai.Client(api_key=settings.gemini_api_key, vertexai=False)
     knowledge_tools = KnowledgeTools(settings, embedding_service, vector_store)
     contents: list[Any] = [f"Research this complete worker intake:\n{case_to_question(case_data)}"]
-    collected: list[dict[str, Any]] = []
+    collected: list[dict[str, Any]] = load_local_knowledge() if vector_store is None else []
     started, calls_used, rounds_used = time.monotonic(), 0, 0
     config = types.GenerateContentConfig(system_instruction=AGENT_INSTRUCTION, tools=_tool_declarations(), automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True), temperature=0, max_output_tokens=500, http_options=types.HttpOptions(timeout=40000))
     chat = client.chats.create(model=settings.chat_model, config=config) if hasattr(client, "chats") else None
