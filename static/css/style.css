@@ -993,6 +993,13 @@ textarea:focus {
 .result-card h3 {
   margin: 0 0 12px;
   font-size: 16px;
+  text-transform: none;
+}
+
+.issue-analysis-card h4 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  text-transform: none;
 }
 
 .result-card p,

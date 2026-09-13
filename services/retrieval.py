@@ -24,9 +24,72 @@ AGENT_INSTRUCTION = """You are the research agent for VietRights. Examine every 
 QUERY_REWRITE_INSTRUCTION = "Rewrite the worker scenario as a concise English workplace-rights search query. Return only the query."
 
 
+def compact_case_data(case_data: dict[str, Any]) -> dict[str, Any]:
+    """Build a small, privacy-conscious worker-case object without inference."""
+    compact: dict[str, Any] = {}
+
+    def add(key: str, value: Any) -> None:
+        if value is not None and value != "" and value != [] and value != {}:
+            compact[key] = value
+
+    add("language", case_data.get("language"))
+    description = str(case_data.get("description") or "").strip()[:2000]
+    issues = list(dict.fromkeys(str(issue).strip() for issue in case_data.get("mainIssues") or [] if str(issue).strip()))
+    scenario = description or ", ".join(issues)
+    add("issue", scenario[:2000])
+    employment = case_data.get("employmentTypeOnDocuments")
+    add("employment", [employment] if employment not in (None, "", "unknown") else None)
+
+    has_contract = case_data.get("has_contract")
+    has_payslip = case_data.get("has_payslip")
+    if has_contract is None and has_payslip is None:
+        document_value = case_data.get("documentAvailability")
+        document_status = {
+            "both": (True, True), "payslip_only": (False, True),
+            "contract_only": (True, False), "neither": (False, False), "unsure": (None, None),
+        }.get(document_value, (None, None))
+        has_contract, has_payslip = document_status
+    add("contract", "yes" if has_contract is True else "no" if has_contract is False else "unknown")
+    add("payslip", "yes" if has_payslip is True else "no" if has_payslip is False else "unknown")
+
+    pay = case_data.get("pay") or {}
+    if isinstance(pay, dict):
+        compact_pay = {}
+        add_method = pay.get("payBasis")
+        if add_method not in (None, ""):
+            compact_pay["method"] = add_method
+        if pay.get("amount") is not None:
+            compact_pay["amount_aud"] = pay["amount"]
+        if compact_pay:
+            compact["pay"] = compact_pay
+
+    schedule = {}
+    if case_data.get("hoursPerWeek") is not None:
+        schedule["hours_per_week"] = case_data["hoursPerWeek"]
+    if case_data.get("hoursPerShift") is not None:
+        schedule["hours_per_shift"] = case_data["hoursPerShift"]
+    work_time = {str(value).strip() for value in case_data.get("workTime") or []}
+    for name, marker in (("night", "night"), ("weekend", "weekend"), ("public_holiday", "public_holiday")):
+        if marker in work_time:
+            schedule[name] = True
+    if work_time:
+        schedule["work_time"] = sorted(work_time)
+    if schedule:
+        compact["schedule"] = schedule
+
+    flags = issues + [str(case_data.get("overtime")).strip()] if case_data.get("overtime") not in (None, "", "unknown") else issues
+    add("risk_flags", list(dict.fromkeys(flag for flag in flags if flag)))
+    for key in ("workplace", "workPattern", "payslipStatus", "paymentMethod", "paidLeave", "visaThreat", "safetyConcern", "coercion"):
+        value = case_data.get(key)
+        if value not in (None, ""):
+            compact[key] = value
+    return compact
+
+
 def case_to_question(case_data: dict[str, Any]) -> str:
-    """Serialize all user-provided context for the research agent."""
-    return json.dumps(case_data, ensure_ascii=False, separators=(",", ":"), default=str)
+    """Serialize the compact user case for the research agent."""
+    compact_case = compact_case_data(case_data)
+    return json.dumps(compact_case, ensure_ascii=False, separators=(",", ":"))
 
 
 def rewrite_search_query(question: str, settings: Settings | None = None, client: Any | None = None) -> str:

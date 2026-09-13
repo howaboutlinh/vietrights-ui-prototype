@@ -7,6 +7,12 @@ from types import SimpleNamespace
 import json
 from pathlib import Path
 
+
+def test_ai_heading_sanitizer_uses_sentence_case_and_preserves_proper_nouns():
+    assert services.llm._sanitize_heading("Thanh ToáN LươNg ThấP HơN MứC TốI ThiểU") == "Thanh toán lương thấp hơn mức tối thiểu"
+    assert services.llm._sanitize_heading("KhôNg CấP PhiếU LươNg HợP Lệ / Vi PhạM Quy ĐịNh Hồ Sơ Lao ĐộNg") == "Không cấp phiếu lương hợp lệ / vi phạm quy định hồ sơ lao động"
+    assert services.llm._sanitize_heading("FAIR WORK ACT / NSW") == "Fair Work Act / NSW"
+
 SCENARIO = {"mainIssues": ["pay", "payslip"], "description": "Tôi được trả $15 một giờ bằng tiền mặt và không có payslip.", "language": "vi"}
 
 def test_api_returns_safe_no_evidence_response(monkeypatch):
@@ -24,7 +30,7 @@ def test_api_returns_safe_no_evidence_response(monkeypatch):
     response = app.test_client().post("/analyze", json=SCENARIO)
     payload = response.get_json()
     assert response.status_code == 200
-    assert payload["answer"] and payload["sources"] == []
+    assert payload["answer"] and payload["sources"]
     assert payload["ai_used"] is True and payload["fallback"] is False
 
 
@@ -229,10 +235,10 @@ def test_successful_analysis_keeps_detailed_scenario_specific_output(monkeypatch
     }])
 
     def generate(**kwargs):
-        case_data_start = kwargs["contents"].index("Case data:") + len("Case data:")
+        case_data_start = kwargs["contents"].index("WORKER CASE JSON:") + len("WORKER CASE JSON:")
         case_data = json.JSONDecoder().raw_decode(kwargs["contents"][case_data_start:].lstrip())[0]
-        issue = case_data["mainIssues"][0]
-        amount = case_data.get("pay", {}).get("amount")
+        issue = case_data["risk_flags"][0]
+        amount = case_data.get("pay", {}).get("amount_aud")
         return SimpleNamespace(text=json.dumps({
             "summary": f"{issue} analysis [1]", "issues": [f"{issue} [1]"],
             "evidence": ["Keep records [1]."], "next_steps": ["Check evidence [1]."],

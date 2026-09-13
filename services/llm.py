@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -8,7 +10,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
 
-from services.retrieval import retrieve_context
+from services.retrieval import compact_case_data, retrieve_context
 from services.retry import call_with_retry, http_options
 import httpx
 
@@ -33,6 +35,7 @@ CHOICE_FIELDS = (
     "employmentTypeOnDocuments", "payslipStatus", "paymentMethod",
     "overtime", "breaks", "visaThreat", "immediateDanger", "safetyConcern", "coercion",
 )
+PRESERVED_TITLE_TERMS = ("Fair Work Ombudsman", "Fair Work Act", "SafeWork NSW", "NSW", "RMWC", "AUD")
 
 
 class LLMBaseError(Exception):
@@ -97,6 +100,25 @@ def _coerce_list(value: Any) -> List[str]:
     if isinstance(value, str):
         return [value.strip()] if value.strip() else []
     return [str(value).strip()] if str(value).strip() else []
+
+
+def _sanitize_heading(value: Any) -> str:
+    """Normalize only AI heading/title text to sentence case."""
+    text = unicodedata.normalize("NFC", str(value or "").strip())
+    if not text:
+        return ""
+    protected = text
+    for index, term in enumerate(PRESERVED_TITLE_TERMS):
+        protected = re.sub(re.escape(term), f"__PRESERVED_TERM_{index}__", protected, flags=re.IGNORECASE)
+    sanitized = protected.lower()
+    if not sanitized.startswith("__preserved_term_"):
+        first_letter = re.search(r"[^\W\d_]", sanitized, flags=re.UNICODE)
+        if first_letter:
+            position = first_letter.start()
+            sanitized = sanitized[:position] + sanitized[position].upper() + sanitized[position + 1:]
+    for index, term in enumerate(PRESERVED_TITLE_TERMS):
+        sanitized = sanitized.replace(f"__preserved_term_{index}__", term)
+    return sanitized
 
 
 def _safe_parse_json(raw_response: str) -> Dict[str, Any]:
@@ -410,18 +432,21 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         raise LLMInvalidResponseError(f"Prompt template for language '{language}' not found in prompts resource.")
 
     system_prompt = lang_prompts["system_prompt"]
-    case_data_json = json.dumps(case_data, ensure_ascii=False)
+    compact_case = compact_case_data(case_data)
+    compact_case_json = json.dumps(compact_case, ensure_ascii=False, separators=(",", ":"))
+    logger.info("Gemini worker case fields=%s serialized_chars=%d", sorted(compact_case.keys()), len(compact_case_json))
     user_prompt = lang_prompts["user_prompt_template"].format(
-        case_data_json=case_data_json,
+        case_data_json=compact_case_json,
         formatted_context=formatted_context
     )
 
     model_name = os.getenv("GEMINI_MODEL", os.getenv("GEMINI_CHAT_MODEL", GEMINI_MODEL))
     logger.info("Starting Gemini analysis model=%s", model_name)
 
+    fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", GEMINI_FALLBACK_MODEL).strip()
     models = [model_name]
-    if GEMINI_FALLBACK_MODEL and GEMINI_FALLBACK_MODEL != model_name:
-        models.append(GEMINI_FALLBACK_MODEL)
+    if fallback_model and fallback_model != model_name:
+        models.append(fallback_model)
     response = None
     last_error = None
     for model_index, current_model in enumerate(models):
@@ -497,7 +522,7 @@ def analyze_case(case_data: Dict[str, Any]) -> Dict[str, Any]:
         ],
         "issue_analysis": [
             {
-                "issue": str(item.get("issue", "")).strip(),
+                "issue": _sanitize_heading(item.get("issue", "")),
                 "fact_from_user": str(item.get("fact_from_user", "")).strip(),
                 "why_it_may_be_unfair": str(item.get("why_it_may_be_unfair", "")).strip(),
                 "applicable_law_or_rule": str(item.get("applicable_law_or_rule", "")).strip(),

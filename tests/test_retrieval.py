@@ -2,7 +2,7 @@ from types import SimpleNamespace
 import pytest
 from services.config import ConfigurationError, Settings
 from services.embedding_service import EmbeddingError, EmbeddingService
-from services.retrieval import KnowledgeTools, MAX_PLANNING_ROUNDS, case_to_question, retrieve_context, rewrite_search_query
+from services.retrieval import KnowledgeTools, MAX_PLANNING_ROUNDS, case_to_question, compact_case_data, retrieve_context, rewrite_search_query
 
 def settings(**changes):
     base = Settings(gemini_api_key="x", database_url="postgresql://db-user:secret@pooler.example/postgres")
@@ -54,4 +54,31 @@ def test_source_section_tool_only_accepts_urls_returned_by_search():
 def test_complete_intake_is_sent_to_research_agent():
     payload = {"mainIssues": ["visa"], "description": "Tôi bị đe doạ", "nested": {"hours": 60}}
     serialized = case_to_question(payload)
-    assert "Tôi bị đe doạ" in serialized and '"hours":60' in serialized
+    assert "Tôi bị đe doạ" in serialized and '"nested"' not in serialized
+
+
+def test_compact_case_removes_empty_fields_and_preserves_unicode_unknowns():
+    compact = compact_case_data({
+        "language": "vi", "mainIssues": ["pay", "pay"], "description": "Tôi được trả lương.",
+        "paidLeave": "unknown", "documentAvailability": "payslip_only",
+        "has_contract": False, "has_payslip": True, "pay": {"payBasis": "hourly", "amount": 25},
+        "workTime": ["weekend"], "empty": "", "none": None,
+    })
+    assert compact["issue"] == "Tôi được trả lương."
+    assert compact["risk_flags"] == ["pay"]
+    assert compact["contract"] == "no" and compact["payslip"] == "yes"
+    assert compact["paidLeave"] == "unknown"
+    assert "empty" not in compact and "none" not in compact
+
+
+def test_compact_case_json_is_unicode_and_in_memory():
+    payload = {"mainIssues": ["payslip"], "description": "Không có payslip"}
+    serialized = case_to_question(payload)
+    assert "Không có payslip" in serialized
+    assert "\\u00" not in serialized
+
+
+def test_compact_case_does_not_write_a_physical_json_file(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    case_to_question({"mainIssues": ["pay"], "description": "Tôi được trả thiếu."})
+    assert list(tmp_path.iterdir()) == []
